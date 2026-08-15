@@ -10,16 +10,112 @@ import { X } from "lucide-react";
 export default function Dashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
 
-  // State to manage Add Task form/modal visibility and targeted column ID
+  // State to manage Add Task modal visibility and targeted column ID
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
 
-  // Example column data state
+  // Form input states
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskAssignee, setNewTaskAssignee] = useState("Admin");
+  const [newTaskDueDate, setNewTaskDueDate] = useState("29 Jul");
+  const [newTaskTag, setNewTaskTag] = useState("Deployment");
+
+  // Initial column data matching reference design
   const [columns, setColumns] = useState([
-    { id: "todo", title: "To Do", tasks: [] as Task[] },
-    { id: "doing", title: "Doing", tasks: [] as Task[] },
-    { id: "completed", title: "Completed", tasks: [] as Task[] },
-    { id: "on-hold", title: "On hold", tasks: [] as Task[] },
+    {
+      id: "todo",
+      title: "To Do",
+      tasks: [
+        {
+          id: "t1",
+          title: "Write API Documentation",
+          assignee: { name: "Admin" },
+          dueDate: "29 Jul",
+          tags: ["Deployment", "Deployment"],
+        },
+        {
+          id: "t2",
+          title: "Implement Search Function",
+          assignee: { name: "Admin" },
+          dueDate: "29 Jul",
+          tags: ["Deployment", "Deployment"],
+        },
+        {
+          id: "t3",
+          title: "Deploy to Production",
+          assignee: { name: "Admin" },
+          dueDate: "29 Jul",
+          tags: ["Deployment", "Deployment"],
+        },
+      ] as Task[],
+    },
+    {
+      id: "doing",
+      title: "Doing",
+      tasks: [
+        {
+          id: "d1",
+          title: "Code Review Completed",
+          assignee: { name: "Admin" },
+          dueDate: "29 Jul",
+          tags: ["Deployment", "Deployment"],
+        },
+        {
+          id: "d2",
+          title: "Design Mockups Finalized",
+          assignee: { name: "Admin" },
+          dueDate: "29 Jul",
+          tags: ["Deployment", "Deployment"],
+        },
+      ] as Task[],
+    },
+    {
+      id: "completed",
+      title: "Completed",
+      tasks: [
+        {
+          id: "c1",
+          title: "Feature Testing Passed",
+          assignee: { name: "QA Team" },
+          dueDate: "30 Jul",
+          tags: ["Testing", "Passed"],
+        },
+        {
+          id: "c2",
+          title: "UI Design Updated",
+          assignee: { name: "Designer" },
+          dueDate: "31 Jul",
+          tags: ["Design", "Updated"],
+        },
+        {
+          id: "c3",
+          title: "Security Audit Scheduled",
+          assignee: { name: "Security" },
+          dueDate: "01 Aug",
+          tags: ["Audit", "Scheduled"],
+        },
+      ] as Task[],
+    },
+    {
+      id: "on-hold",
+      title: "On Hold",
+      tasks: [
+        {
+          id: "oh1",
+          title: "UI Review Pending",
+          assignee: { name: "Design" },
+          dueDate: "29 Jul",
+          tags: ["Review", "Pending"],
+        },
+        {
+          id: "oh2",
+          title: "Backend API Optimization",
+          assignee: { name: "Dev Team" },
+          dueDate: "30 Jul",
+          tags: ["Backend", "Performance"],
+        },
+      ] as Task[],
+    },
   ]);
 
   useEffect(() => {
@@ -38,18 +134,42 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Opens the Add Task form/modal for the current column
+  // Opens the Add Task form for the target column
   const handleAddTask = (columnId?: string) => {
     if (columnId) {
       setActiveColumnId(columnId);
       setIsAddTaskOpen(true);
-      console.log(`Opening Add Task form for column ID: ${columnId}`);
     }
   };
 
   const handleCloseModal = () => {
     setIsAddTaskOpen(false);
     setActiveColumnId(null);
+    setNewTaskTitle("");
+  };
+
+  // Submits the new task and appends it to the target column's tasks array
+  const handleCreateTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaskTitle.trim() || !activeColumnId) return;
+
+    const newTask: Task = {
+      id: Date.now().toString(),
+      title: newTaskTitle.trim(),
+      assignee: { name: newTaskAssignee || "Admin" },
+      dueDate: newTaskDueDate || "29 Jul",
+      tags: newTaskTag ? [newTaskTag] : ["Deployment"],
+    };
+
+    setColumns((prevColumns) =>
+      prevColumns.map((col) =>
+        col.id === activeColumnId
+          ? { ...col, tasks: [...col.tasks, newTask] }
+          : col
+      )
+    );
+
+    handleCloseModal();
   };
 
   const handleMoreOptions = (columnId?: string) => {
@@ -81,8 +201,8 @@ export default function Dashboard() {
             {/* Tasks Header Component */}
             <TaskHeader />
 
-            {/* Main Content Columns */}
-            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {/* Main Content Columns: items-start ensures columns hug their content height */}
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
               {columns.map((col) => (
                 <KanbanColumn
                   key={col.id}
@@ -98,13 +218,16 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* Add Task Modal / Form (Opens when handleAddTask is triggered) */}
+      {/* Add Task Modal / Form */}
       {isAddTaskOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-[#E5E5E5] shadow-lg w-full max-w-md p-5 flex flex-col gap-4">
+          <form
+            onSubmit={handleCreateTask}
+            className="bg-white rounded-lg border border-[#E5E5E5] shadow-lg w-full max-w-md p-5 flex flex-col gap-4"
+          >
             <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
               <h3 className="text-sm font-semibold text-[#171717]">
-                Add Task ({activeColumn?.title || activeColumnId})
+                Add Task to "{activeColumn?.title}"
               </h3>
               <button
                 onClick={handleCloseModal}
@@ -117,17 +240,53 @@ export default function Dashboard() {
             </div>
 
             <div className="flex flex-col gap-3">
-              <div className="text-xs text-[#737373]">
-                Target Column ID: <span className="font-mono font-medium text-[#171717]">{activeColumnId}</span>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-[#171717]">
+                  Task Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  placeholder="e.g. Write API Documentation"
+                  className="w-full px-3 py-2 text-xs border border-[#E5E5E5] rounded focus:outline-none focus:border-[#171717]"
+                  autoFocus
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-[#171717]">Assignee</label>
+                  <input
+                    type="text"
+                    value={newTaskAssignee}
+                    onChange={(e) => setNewTaskAssignee(e.target.value)}
+                    placeholder="Admin"
+                    className="w-full px-3 py-2 text-xs border border-[#E5E5E5] rounded focus:outline-none focus:border-[#171717]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-[#171717]">Due Date</label>
+                  <input
+                    type="text"
+                    value={newTaskDueDate}
+                    onChange={(e) => setNewTaskDueDate(e.target.value)}
+                    placeholder="29 Jul"
+                    className="w-full px-3 py-2 text-xs border border-[#E5E5E5] rounded focus:outline-none focus:border-[#171717]"
+                  />
+                </div>
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-[#171717]">Task Title</label>
+                <label className="text-xs font-medium text-[#171717]">Tag</label>
                 <input
                   type="text"
-                  placeholder="Enter task title..."
+                  value={newTaskTag}
+                  onChange={(e) => setNewTaskTag(e.target.value)}
+                  placeholder="Deployment"
                   className="w-full px-3 py-2 text-xs border border-[#E5E5E5] rounded focus:outline-none focus:border-[#171717]"
-                  disabled
                 />
               </div>
             </div>
@@ -136,12 +295,18 @@ export default function Dashboard() {
               <button
                 onClick={handleCloseModal}
                 type="button"
-                className="px-3 py-1.5 text-xs font-medium text-[#171717] border border-[#E5E5E5] rounded hover:bg-[#F5F5F5] transition-colors"
+                className="px-3 py-1.5 text-xs font-medium text-[#171717] border border-[#E5E5E5] rounded hover:bg-[#F5F5F5] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
+              <button
+                type="submit"
+                className="px-3 py-1.5 text-xs font-medium text-white bg-[#171717] rounded hover:bg-[#262626] transition-colors cursor-pointer"
+              >
+                Add Task
+              </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </div>
