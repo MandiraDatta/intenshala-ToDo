@@ -3,11 +3,24 @@
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import TaskHeader from "@/components/taskHeader";
+import KanbanColumn, { Task } from "@/components/kanbanColumn";
 import { useEffect, useState } from "react";
-import { GripVertical, Plus, MoreHorizontal } from "lucide-react";
+import { X } from "lucide-react";
 
 export default function Dashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+
+  // State to manage Add Task form/modal visibility and targeted column ID
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
+
+  // Example column data state
+  const [columns, setColumns] = useState([
+    { id: "todo", title: "To Do", tasks: [] as Task[] },
+    { id: "doing", title: "Doing", tasks: [] as Task[] },
+    { id: "completed", title: "Completed", tasks: [] as Task[] },
+    { id: "on-hold", title: "On hold", tasks: [] as Task[] },
+  ]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width:767px)");
@@ -24,6 +37,26 @@ export default function Dashboard() {
       mediaQuery.removeEventListener("change", handleResize);
     };
   }, []);
+
+  // Opens the Add Task form/modal for the current column
+  const handleAddTask = (columnId?: string) => {
+    if (columnId) {
+      setActiveColumnId(columnId);
+      setIsAddTaskOpen(true);
+      console.log(`Opening Add Task form for column ID: ${columnId}`);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsAddTaskOpen(false);
+    setActiveColumnId(null);
+  };
+
+  const handleMoreOptions = (columnId?: string) => {
+    console.log(`More options requested for column: ${columnId}`);
+  };
+
+  const activeColumn = columns.find((c) => c.id === activeColumnId);
 
   return (
     <div className="min-h-screen flex bg-white">
@@ -49,203 +82,68 @@ export default function Dashboard() {
             <TaskHeader />
 
             {/* Main Content Columns */}
-            <div className="w-full h-full flex  gap-5 overflow-x-auto">
-              {/* todo column */}
-              <div className=" w-full flex flex-col gap-5 rounded-lg border border-[#E5E5E5]">
-                <div className="w-full h-[39px] flex  justify-between p-3 ">
-                  {/* left */}
-                  <div className="w-full h-3.5 flex items-center gap-2">
-
-                    {/* Grip */}
-                    <div className="w-3.5 h-3.5 flex items-center justify-center">
-                      <GripVertical className="w-3.5 h-3.5" />
-                    </div>
-
-                    {/* To Do */}
-                    <div className="w-[34px] h-3 flex items-center">
-                      <span className="font-sans text-xs font-semibold leading-3 text-[#171717] whitespace-nowrap">
-                        To Do
-                      </span>
-                    </div>
-
-                    {/* right  */}
-                    <div className="w-9 h-3.5 flex items-center  ml-auto gap-2">
-                      {/* add task */}
-                      <div className="w-3.5 h-3.5 flex items-center justify-center">
-                        <Plus className="w-[61rem] h-[49.25rem] gap-5" />
-                      </div>
-                      {/* filter */}
-                      <div className="w-5 h-3.5 ml-auto flex items-center justify-center">
-                        <span className="font-sans text-xs font-semibold leading-3 text-[#171717] whitespace-nowrap flex items-center justify-center">
-                          <MoreHorizontal className="w-3.5 h-3.5" />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="w-full h-[39px] flex  justify-between px-3">
-                  <div className="w-[5.625rem] h-6 flex items-center gap-1 py-2 px-[0.625rem] text-[#171717]">
-  <div className="w-3.5 h-3.5 flex items-center justify-center">
-    <Plus size={14} />
-  </div>
-
-  <div className="w-[3.375rem] h-4 flex items-center">
-    <span className="font-sans text-xs font-medium leading-4 tracking-normal whitespace-nowrap">
-      Add Task
-    </span>
-  </div>
-</div>
-                </div>
-              </div>
-
-              {/* doing column */}
-              <div className="w-full flex flex-col gap-5 rounded-lg border border-[#E5E5E5]">
-                <div className="w-full h-[39px] flex justify-between p-3">
-                  {/* left */}
-                  <div className="w-full h-3.5 flex items-center gap-2">
-
-                    {/* Grip */}
-                    <div className="w-3.5 h-3.5 flex items-center justify-center">
-                      <GripVertical className="w-3.5 h-3.5" />
-                    </div>
-
-                    {/* Doing */}
-                    <div className="w-[34px] h-3 flex items-center">
-                      <span className="font-sans text-xs font-semibold leading-3 text-[#171717] whitespace-nowrap">
-                        Doing
-                      </span>
-                    </div>
-                    {/* right  */}
-                    <div className="w-9 h-3.5 flex items-center  ml-auto gap-2">
-                      {/* add task */}
-                      <div className="w-3.5 h-3.5 flex items-center justify-center">
-                        <Plus className="w-[61rem] h-[49.25rem] gap-5" />
-                      </div>
-                      {/* filter */}
-                      <div className="w-5 h-3.5 ml-auto flex items-center justify-center">
-                        <span className="font-sans text-xs font-semibold leading-3 text-[#171717] whitespace-nowrap flex items-center justify-center">
-                          <MoreHorizontal className="w-3.5 h-3.5" />
-                        </span>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-                <div className="w-full h-[39px] flex justify-between px-3">
-                  <div className="w-[5.625rem] h-6 flex items-center gap-1 py-2 px-[0.625rem] text-[#171717]">
-                    <div className="w-3.5 h-3.5 flex items-center justify-center">
-                      <Plus size={14} />
-                    </div>
-
-                    <div className="w-[3.375rem] h-4 flex items-center">
-                      <span className="font-sans text-xs font-medium leading-4 tracking-normal whitespace-nowrap">
-                        Add Task
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* completed column */}
-              <div className="w-full flex flex-col gap-5 rounded-lg border border-[#E5E5E5]">
-                <div className="w-full h-[39px] flex justify-between p-3">
-
-                  {/* left */}
-                  <div className="w-full h-3.5 flex items-center gap-2">
-
-                    {/* Grip */}
-                    <div className="w-3.5 h-3.5 flex items-center justify-center">
-                      <GripVertical className="w-3.5 h-3.5" />
-                    </div>
-
-                    {/* Completed */}
-                    <div className="w-[34px] h-3 flex items-center">
-                      <span className="font-sans text-xs font-semibold leading-3 text-[#171717] whitespace-nowrap">
-                        Completed
-                      </span>
-                    </div>
-                    {/* right  */}
-                    <div className="w-9 h-3.5 flex items-center  ml-auto gap-2">
-                      {/* add task */}
-                      <div className="w-3.5 h-3.5 flex items-center justify-center">
-                        <Plus className="w-[61rem] h-[49.25rem] gap-5" />
-                      </div>
-                      {/* filter */}
-                      <div className="w-5 h-3.5 ml-auto flex items-center justify-center">
-                        <span className="font-sans text-xs font-semibold leading-3 text-[#171717] whitespace-nowrap flex items-center justify-center">
-                          <MoreHorizontal className="w-3.5 h-3.5" />
-                        </span>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-                <div className="w-full h-[39px] flex justify-between px-3">
-                  <div className="w-[5.625rem] h-6 flex items-center gap-1 py-2 px-[0.625rem] text-[#171717]">
-                    <div className="w-3.5 h-3.5 flex items-center justify-center">
-                      <Plus size={14} />
-                    </div>
-
-                    <div className="w-[3.375rem] h-4 flex items-center">
-                      <span className="font-sans text-xs font-medium leading-4 tracking-normal whitespace-nowrap">
-                        Add Task
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* on hold column */}
-              <div className="w-full flex flex-col gap-5 rounded-lg border border-[#E5E5E5]">
-                <div className="w-full h-[39px] flex justify-between p-3">
-                  {/* left */}
-                  <div className="w-full h-3.5 flex items-center gap-2">
-
-                    {/* Grip */}
-                    <div className="w-3.5 h-3.5 flex items-center justify-center">
-                      <GripVertical className="w-3.5 h-3.5" />
-                    </div>
-
-                    {/* On hold */}
-                    <div className="w-[34px] h-3 flex items-center">
-                      <span className="font-sans text-xs font-semibold leading-3 text-[#171717] whitespace-nowrap">
-                        On hold
-                      </span>
-                    </div>
-                    {/* right  */}
-                    <div className="w-9 h-3.5 flex items-center  ml-auto gap-2">
-                      {/* add task */}
-                      <div className="w-3.5 h-3.5 flex items-center justify-center">
-                        <Plus className="w-[61rem] h-[49.25rem] gap-5" />
-                      </div>
-                      {/* filter */}
-                      <div className="w-5 h-3.5 ml-auto flex items-center justify-center">
-                        <span className="font-sans text-xs font-semibold leading-3 text-[#171717] whitespace-nowrap flex items-center justify-center">
-                          <MoreHorizontal className="w-3.5 h-3.5" />
-                        </span>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-                <div className="w-full h-[39px] flex justify-between px-3">
-                  <div className="w-[5.625rem] h-6 flex items-center gap-1 py-2 px-[0.625rem] text-[#171717]">
-                    <div className="w-3.5 h-3.5 flex items-center justify-center">
-                      <Plus size={14} />
-                    </div>
-
-                    <div className="w-[3.375rem] h-4 flex items-center">
-                      <span className="font-sans text-xs font-medium leading-4 tracking-normal whitespace-nowrap">
-                        Add Task
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              {columns.map((col) => (
+                <KanbanColumn
+                  key={col.id}
+                  id={col.id}
+                  title={col.title}
+                  tasks={col.tasks}
+                  onAddTask={() => handleAddTask(col.id)}
+                  onMoreOptions={() => handleMoreOptions(col.id)}
+                />
+              ))}
             </div>
           </div>
         </div>
       </main>
+
+      {/* Add Task Modal / Form (Opens when handleAddTask is triggered) */}
+      {isAddTaskOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg border border-[#E5E5E5] shadow-lg w-full max-w-md p-5 flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
+              <h3 className="text-sm font-semibold text-[#171717]">
+                Add Task ({activeColumn?.title || activeColumnId})
+              </h3>
+              <button
+                onClick={handleCloseModal}
+                className="text-[#737373] hover:text-[#171717] transition-colors p-1"
+                type="button"
+                aria-label="Close modal"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="text-xs text-[#737373]">
+                Target Column ID: <span className="font-mono font-medium text-[#171717]">{activeColumnId}</span>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-[#171717]">Task Title</label>
+                <input
+                  type="text"
+                  placeholder="Enter task title..."
+                  className="w-full px-3 py-2 text-xs border border-[#E5E5E5] rounded focus:outline-none focus:border-[#171717]"
+                  disabled
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E5E5]">
+              <button
+                onClick={handleCloseModal}
+                type="button"
+                className="px-3 py-1.5 text-xs font-medium text-[#171717] border border-[#E5E5E5] rounded hover:bg-[#F5F5F5] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
