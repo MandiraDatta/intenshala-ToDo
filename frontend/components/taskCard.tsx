@@ -1,7 +1,9 @@
 "use client";
 
 import React from "react";
-import { Calendar, Tag, MoreHorizontal, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { Calendar, Tag, SignalLow, SignalMedium, SignalHigh } from "lucide-react";
+import { RiMoreFill } from "@remixicon/react";
 import { Task } from "./kanbanColumn";
 import { VisibleFields } from "./taskHeader";
 
@@ -37,7 +39,8 @@ export default function TaskCard({
   const showMiddleRow = showMembers || showDueDate || showPriority;
 
   return (
-    <div
+    <Link
+      href="/task"
       className={`w-full min-h-[7.125rem] flex flex-col justify-between gap-2 p-3 rounded-md border border-[#E5E5E5] bg-white shadow-xs hover:border-[#D4D4D4] transition-all cursor-pointer ${className}`}
     >
       {/* Top Row: Task Title + More Options */}
@@ -51,10 +54,10 @@ export default function TaskCard({
             e.stopPropagation();
             onMoreOptions?.(task);
           }}
-          className="text-[#A3A3A3] hover:text-[#171717] transition-colors p-0.5 shrink-0"
+          className="text-[#171717] hover:text-black transition-colors p-0.5 shrink-0 cursor-pointer"
           aria-label="Card options"
         >
-          <MoreHorizontal size={14} />
+          <RiMoreFill className="w-4 h-4 text-[#171717]" />
         </button>
       </div>
 
@@ -76,9 +79,23 @@ export default function TaskCard({
           <div className="flex items-center gap-1.5 ml-auto">
             {/* Priority Badge */}
             {showPriority && (
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#FEF3C7] text-[#D97706] text-[10px] font-medium">
-                <AlertCircle size={10} />
-                <span>{priority}</span>
+              <div className="flex items-center gap-1 text-[10px] font-medium">
+                {priority.toLowerCase() === "low" ? (
+                  <span className="flex items-center gap-1 text-[#94A3B8]">
+                    <SignalLow size={10} className="text-[#94A3B8]" />
+                    Low
+                  </span>
+                ) : priority.toLowerCase() === "medium" ? (
+                  <span className="flex items-center gap-1 text-[#F97316]">
+                    <SignalMedium size={10} className="text-[#F97316]" />
+                    Medium
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[#EF4444]">
+                    <SignalHigh size={10} className="text-[#EF4444]" />
+                    High
+                  </span>
+                )}
               </div>
             )}
 
@@ -109,6 +126,6 @@ export default function TaskCard({
           ))}
         </div>
       )}
-    </div>
+    </Link>
   );
 }

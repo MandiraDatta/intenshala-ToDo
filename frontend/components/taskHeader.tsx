@@ -16,23 +16,32 @@ export interface TaskHeaderProps {
   visibleFields?: VisibleFields;
   onToggleField?: (field: keyof VisibleFields) => void;
   onAddTask?: () => void;
+  viewMode?: "board" | "list";
+  onViewModeChange?: (mode: "board" | "list") => void;
 }
 
 export default function TaskHeader({
   visibleFields: propVisibleFields,
   onToggleField,
   onAddTask,
+  viewMode = "board",
+  onViewModeChange,
 }: TaskHeaderProps) {
   const [isFieldsOpen, setIsFieldsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"list" | "board">("board");
+  const [activeTab, setActiveTab] = useState<"list" | "board">(viewMode);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Local fields state initialized with defaults (all unchecked) or passed props
+  // Sync active tab with prop if viewMode changes from parent
+  useEffect(() => {
+    setActiveTab(viewMode);
+  }, [viewMode]);
+
+  // Local fields state initialized with defaults or passed props
   const [localFields, setLocalFields] = useState<VisibleFields>({
     priority: false,
-    members: false,
-    dueDate: false,
-    labels: false,
+    members: true,
+    dueDate: true,
+    labels: true,
     status: false,
     reporter: false,
     ...propVisibleFields,
@@ -44,6 +53,13 @@ export default function TaskHeader({
       setLocalFields(propVisibleFields);
     }
   }, [propVisibleFields]);
+
+  const handleTabChange = (mode: "list" | "board") => {
+    setActiveTab(mode);
+    if (onViewModeChange) {
+      onViewModeChange(mode);
+    }
+  };
 
   // Handle toggling checkmarks on click
   const handleToggle = (key: keyof VisibleFields) => {
@@ -117,7 +133,7 @@ export default function TaskHeader({
               <div className="w-[16.6875rem] h-[2.25rem] flex rounded-lg border border-[#E5E5E5] overflow-hidden bg-[#F5F5F5] shrink-0">
                 <button
                   type="button"
-                  onClick={() => setActiveTab("list")}
+                  onClick={() => handleTabChange("list")}
                   className={`flex-1 h-full flex items-center justify-center gap-2 text-xs font-medium transition-colors border-r border-[#E5E5E5] ${activeTab === "list"
                       ? "bg-white text-[#171717]"
                       : "bg-[#F5F5F5] text-[#737373] hover:text-[#171717]"
@@ -128,7 +144,7 @@ export default function TaskHeader({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveTab("board")}
+                  onClick={() => handleTabChange("board")}
                   className={`flex-1 h-full flex items-center justify-center gap-2 text-xs font-medium transition-colors ${activeTab === "board"
                       ? "bg-white text-[#171717]"
                       : "bg-[#F5F5F5] text-[#737373] hover:text-[#171717]"

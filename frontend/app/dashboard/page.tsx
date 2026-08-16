@@ -2,13 +2,26 @@
 
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
-import TaskHeader from "@/components/taskHeader";
+import TaskHeader, { VisibleFields } from "@/components/taskHeader";
 import KanbanColumn, { Task } from "@/components/kanbanColumn";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
 export default function Dashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+
+  // View mode state: 'board' vs 'list'
+  const [viewMode, setViewMode] = useState<"board" | "list">("board");
+
+  // Dynamic state for visible fields - members, dueDate, and labels enabled by default
+  const [visibleFields, setVisibleFields] = useState<VisibleFields>({
+    priority: false,
+    members: true,
+    dueDate: true,
+    labels: true,
+    status: false,
+    reporter: false,
+  });
 
   // State to manage Add Task modal visibility and targeted column ID
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
@@ -134,12 +147,18 @@ export default function Dashboard() {
     };
   }, []);
 
+  const handleToggleField = (field: keyof VisibleFields) => {
+    setVisibleFields((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
+  };
+
   // Opens the Add Task form for the target column
   const handleAddTask = (columnId?: string) => {
-    if (columnId) {
-      setActiveColumnId(columnId);
-      setIsAddTaskOpen(true);
-    }
+    const targetId = columnId || "todo";
+    setActiveColumnId(targetId);
+    setIsAddTaskOpen(true);
   };
 
   const handleCloseModal = () => {
@@ -199,21 +218,46 @@ export default function Dashboard() {
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
           <div className="h-full w-full gap-5 flex flex-col">
             {/* Tasks Header Component */}
-            <TaskHeader />
+            <TaskHeader
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              visibleFields={visibleFields}
+              onToggleField={handleToggleField}
+              onAddTask={() => handleAddTask("todo")}
+            />
 
-            {/* Main Content Columns: items-start ensures columns hug their content height */}
-            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
-              {columns.map((col) => (
-                <KanbanColumn
-                  key={col.id}
-                  id={col.id}
-                  title={col.title}
-                  tasks={col.tasks}
-                  onAddTask={() => handleAddTask(col.id)}
-                  onMoreOptions={() => handleMoreOptions(col.id)}
-                />
-              ))}
-            </div>
+            {/* Dynamic Layout: Grid for Board view Mode, Vertical Accordion Stack for List view Mode */}
+            {viewMode === "board" ? (
+              <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
+                {columns.map((col) => (
+                  <KanbanColumn
+                    key={col.id}
+                    id={col.id}
+                    title={col.title}
+                    tasks={col.tasks}
+                    visibleFields={visibleFields}
+                    isListMode={false}
+                    onAddTask={() => handleAddTask(col.id)}
+                    onMoreOptions={() => handleMoreOptions(col.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="w-full flex flex-col gap-3">
+                {columns.map((col) => (
+                  <KanbanColumn
+                    key={col.id}
+                    id={col.id}
+                    title={col.title}
+                    tasks={col.tasks}
+                    visibleFields={visibleFields}
+                    isListMode={true}
+                    onAddTask={() => handleAddTask(col.id)}
+                    onMoreOptions={() => handleMoreOptions(col.id)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </main>
