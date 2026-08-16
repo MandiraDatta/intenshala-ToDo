@@ -10,12 +10,13 @@ import {
   Check,
 } from "lucide-react";
 import { Sun, Gear, Square } from "@phosphor-icons/react";
+import { useTheme, COLOR_MODES } from "@/context/ThemeContext";
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState<"theme" | "color" | null>(null);
-  const [selectedTheme, setSelectedTheme] = useState<"light" | "dark">("light");
+  const { theme, setTheme, colorMode, setColorMode } = useTheme();
   const profileRef = useRef<HTMLDivElement>(null);
 
   // Close profile dropdown when clicking outside
@@ -41,55 +42,56 @@ export default function Sidebar() {
         lg:w-[16rem]
         min-h-screen
         shrink-0
-        border-r-2 border-[#E5E5E5]
-        bg-[#FAFAFA]
+        border-r-2 border-[#E5E5E5] dark:border-[#2A2A2A]
+        bg-[#FAFAFA] dark:bg-[#111111]
         flex flex-col
-        relative
+        relative z-40
+        transition-colors duration-200
       "
     >
       {/* Header Profile Section */}
-      <div ref={profileRef} className="relative w-full h-[4rem] flex items-center p-2 border-b border-transparent">
+      <div ref={profileRef} className="relative z-50 w-full h-[4rem] flex items-center p-2 border-b border-transparent">
         <div
           onClick={() => {
             setIsProfileOpen(!isProfileOpen);
             setActiveSubmenu(null);
           }}
-          className="w-full flex items-center gap-2 px-3 py-1.5 min-w-0 hover:bg-[#F5F5F5] transition-colors rounded-xl cursor-pointer select-none"
+          className="w-full flex items-center gap-2 px-3 py-1.5 min-w-0 hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors rounded-xl cursor-pointer select-none"
         >
           {/* Avatar */}
-          <div className="w-8 h-8 shrink-0 bg-[#FFFFFF] rounded-2xl overflow-hidden">
+          <div className="w-8 h-8 shrink-0 bg-[#FFFFFF] dark:bg-[#171717] rounded-2xl overflow-hidden">
             <Image src="/Pasted image.png" alt="Avatar" width={32} height={32} className="rounded-2xl" />
           </div>
 
           {/* Name */}
-          <div className="min-w-0 flex-1 font-sans font-bold text-sm leading-none truncate text-neutral-800">
+          <div className="min-w-0 flex-1 font-sans font-bold text-sm leading-none truncate text-neutral-800 dark:text-[#F5F5F5]">
             Dexter
           </div>
 
           {/* Profile dropdown icon */}
           <div className="w-4 h-4 shrink-0 flex items-center justify-center">
-            <ChevronsUpDown className="w-4 h-4 text-neutral-600" />
+            <ChevronsUpDown className="w-4 h-4 text-neutral-600 dark:text-[#A3A3A3]" />
           </div>
         </div>
 
         {/* Profile Dropdown Menu */}
         {isProfileOpen && (
-          <div className="absolute h-[16.625rem] top-14 left-2 right-2 max-w-[calc(100%-1rem)] bg-white border border-[#E5E5E5] rounded-md shadow-xl p-3.5 flex flex-col z-50">
+          <div className="absolute top-14 left-2 right-2 max-w-[calc(100%-1rem)] bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-md shadow-2xl p-3.5 flex flex-col z-50 transition-colors duration-200">
             {/* Header: User Info */}
             <div className="h-[7.5rem] flex flex-col items-center justify-center pb-3 pt-1">
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-[#F5F5F5] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-[#F5F5F5] dark:bg-[#262626] flex items-center justify-center shrink-0">
                 <Image src="/Pasted image.png" alt="Dexter" width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
               </div>
-              <span className="font-sans font-semibold text-sm text-[#171717] mt-2 leading-none">
+              <span className="font-sans font-semibold text-sm text-[#171717] dark:text-[#F5F5F5] mt-2 leading-none">
                 Dexter
               </span>
-              <span className="font-sans text-xs text-[#737373] mt-1 leading-none truncate max-w-full">
+              <span className="font-sans text-xs text-[#737373] dark:text-[#A3A3A3] mt-1 leading-none truncate max-w-full">
                 Dexter@gmail.com
               </span>
             </div>
 
             {/* Divider */}
-            <div className="w-full h-px bg-[#E5E5E5] my-1" />
+            <div className="w-full h-px bg-[#E5E5E5] dark:bg-[#2A2A2A] my-1" />
 
             {/* Menu Options */}
             <div className="flex flex-col gap-0.5 pt-1">
@@ -101,49 +103,49 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={() => setActiveSubmenu(activeSubmenu === "theme" ? null : "theme")}
-                  className="w-full flex items-center justify-between h-9 px-3 gap-2.5 rounded-2xl hover:bg-[#F5F5F5] text-[#171717] transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center justify-between h-9 px-3 gap-2.5 rounded-2xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer text-left"
                 >
-                  <Sun size={16} weight="bold" className="text-[#171717] shrink-0" />
-                  <span className="font-sans text-xs font-medium flex-1 text-[#171717] truncate">
+                  <Sun size={16} weight="bold" className="text-[#171717] dark:text-[#F5F5F5] shrink-0" />
+                  <span className="font-sans text-xs font-medium flex-1 text-[#171717] dark:text-[#F5F5F5] truncate">
                     Change Theme
                   </span>
-                  <svg className="w-4 h-4 shrink-0 text-[#171717]" viewBox="0 0 16 16" fill="none">
+                  <svg className="w-4 h-4 shrink-0 text-[#171717] dark:text-[#F5F5F5]" viewBox="0 0 16 16" fill="none">
                     <path d="M6 4.5L10.5 8L6 11.5V4.5Z" fill="currentColor" />
                   </svg>
                 </button>
 
                 {/* Submenu: Theme Options */}
                 {activeSubmenu === "theme" && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-[#E5E5E5] rounded-md shadow-xl p-2 flex flex-col gap-1 z-50">
-                    <span className="text-[10px] font-medium text-[#737373] px-2 py-0.5">
+                  <div className="absolute left-full top-0 ml-1.5 w-48 max-w-[calc(100vw-2rem)] bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-md shadow-2xl p-2 flex flex-col gap-1 z-50 transition-colors duration-200">
+                    <span className="text-[10px] font-medium text-[#737373] dark:text-[#A3A3A3] px-2 py-0.5 select-none">
                       Theme
                     </span>
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedTheme("light");
+                        setTheme("light");
                         setActiveSubmenu(null);
                       }}
-                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#F5F5F5] text-xs text-[#171717] transition-colors cursor-pointer text-left"
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#F5F5F5] dark:hover:bg-[#262626] text-xs text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer text-left"
                     >
-                      <Sun size={14} weight="bold" className="text-[#171717] shrink-0" />
-                      <span className="flex-1 text-xs">Light</span>
-                      {selectedTheme === "light" && (
-                        <Check className="w-3.5 h-3.5 text-[#171717] stroke-[2.5] shrink-0" />
+                      <Sun size={14} weight="bold" className="text-[#171717] dark:text-[#F5F5F5] shrink-0" />
+                      <span className="flex-1 text-xs font-medium">Light</span>
+                      {theme === "light" && (
+                        <Check className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5] stroke-[2.5] shrink-0" />
                       )}
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedTheme("dark");
+                        setTheme("dark");
                         setActiveSubmenu(null);
                       }}
-                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#F5F5F5] text-xs text-[#171717] transition-colors cursor-pointer text-left"
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#F5F5F5] dark:hover:bg-[#262626] text-xs text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer text-left"
                     >
-                      <Moon className="w-3.5 h-3.5 text-[#171717] stroke-[2.5] shrink-0" />
-                      <span className="flex-1 text-xs">Dark</span>
-                      {selectedTheme === "dark" && (
-                        <Check className="w-3.5 h-3.5 text-[#171717] stroke-[2.5] shrink-0" />
+                      <Moon className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5] shrink-0" />
+                      <span className="flex-1 text-xs font-medium">Dark</span>
+                      {theme === "dark" && (
+                        <Check className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5] stroke-[2.5] shrink-0" />
                       )}
                     </button>
                   </div>
@@ -158,16 +160,47 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={() => setActiveSubmenu(activeSubmenu === "color" ? null : "color")}
-                  className="w-full flex items-center justify-between h-9 px-3 gap-2.5 rounded-2xl hover:bg-[#F5F5F5] text-[#171717] transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center justify-between h-9 px-3 gap-2.5 rounded-2xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer text-left"
                 >
-                  <Square size={16} weight="fill" className="text-[#171717] shrink-0" />
-                  <span className="font-sans text-xs font-medium flex-1 text-[#171717]">
+                  <Square size={16} weight="fill" className="text-[#171717] dark:text-[#F5F5F5] shrink-0" />
+                  <span className="font-sans text-xs font-medium flex-1 text-[#171717] dark:text-[#F5F5F5]">
                     Color Mode
                   </span>
-                  <svg className="w-4 h-4 shrink-0 text-[#171717]" viewBox="0 0 16 16" fill="none">
+                  <svg className="w-4 h-4 shrink-0 text-[#171717] dark:text-[#F5F5F5]" viewBox="0 0 16 16" fill="none">
                     <path d="M6 4.5L10.5 8L6 11.5V4.5Z" fill="currentColor" />
                   </svg>
                 </button>
+
+                {/* Submenu: Color Mode Options */}
+                {activeSubmenu === "color" && (
+                  <div className="absolute left-full top-0 ml-1.5 w-48 max-w-[calc(100vw-2rem)] bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-md shadow-2xl p-2 flex flex-col gap-1 z-50 transition-colors duration-200">
+                    <span className="text-[10px] font-medium text-[#737373] dark:text-[#A3A3A3] px-2 py-0.5 select-none">
+                      Color Mode
+                    </span>
+                    {COLOR_MODES.map((mode) => (
+                      <button
+                        key={mode.value}
+                        type="button"
+                        onClick={() => {
+                          setColorMode(mode.value);
+                          setActiveSubmenu(null);
+                        }}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#F5F5F5] dark:hover:bg-[#262626] text-xs text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer text-left"
+                      >
+                        <Square
+                          size={14}
+                          weight="fill"
+                          style={{ color: mode.hex }}
+                          className="shrink-0 rounded-xs"
+                        />
+                        <span className="flex-1 text-xs font-medium">{mode.name}</span>
+                        {colorMode === mode.value && (
+                          <Check className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5] stroke-[2.5] shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Settings */}
@@ -175,10 +208,10 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={() => setIsProfileOpen(false)}
-                  className="w-full flex items-center justify-between h-9 px-3 gap-2.5 rounded-2xl hover:bg-[#F5F5F5] text-[#171717] transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center justify-between h-9 px-3 gap-2.5 rounded-2xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer text-left"
                 >
-                  <Gear size={16} weight="bold" className="text-[#171717] shrink-0" />
-                  <span className="font-sans text-xs font-medium flex-1 text-[#171717]">
+                  <Gear size={16} weight="bold" className="text-[#171717] dark:text-[#F5F5F5] shrink-0" />
+                  <span className="font-sans text-xs font-medium flex-1 text-[#171717] dark:text-[#F5F5F5]">
                     Settings
                   </span>
                 </button>
@@ -193,7 +226,7 @@ export default function Sidebar() {
         {/* Workspace Selector */}
         <div className="w-full h-8 flex items-center px-3">
           {/* Workspace text */}
-          <div className="flex-1 min-w-0 font-sans font-medium text-sm truncate text-neutral-800">
+          <div className="flex-1 min-w-0 font-sans font-medium text-sm truncate text-neutral-800 dark:text-[#F5F5F5]">
             Workspace
           </div>
 
@@ -204,9 +237,8 @@ export default function Sidebar() {
             aria-label="Toggle Workspace navigation"
           >
             <ChevronDownIcon
-              className={`w-4 h-4 text-neutral-600 transition-transform duration-300 ${
-                isOpen ? "rotate-0" : "-rotate-180"
-              }`}
+              className={`w-4 h-4 text-neutral-600 dark:text-[#A3A3A3] transition-transform duration-300 ${isOpen ? "rotate-0" : "-rotate-180"
+                }`}
             />
           </button>
         </div>
@@ -215,22 +247,22 @@ export default function Sidebar() {
         {isOpen && (
           <div className="w-full flex flex-col gap-1 mt-1">
             {/* Tasks */}
-            <div className="w-full h-9 gap-3 px-3 py-2 rounded-xl hover:bg-[#F5F5F5] transition-colors flex items-center cursor-pointer">
+            <div className="w-full h-9 gap-3 px-3 py-2 rounded-xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors flex items-center cursor-pointer">
               <div className="relative w-4 h-4 shrink-0 flex items-center justify-center">
-                <LayoutDashboard className="w-4 h-4 text-neutral-600" />
+                <LayoutDashboard className="w-4 h-4 text-neutral-600 dark:text-[#A3A3A3]" />
               </div>
               <div className="flex-1 min-w-0">
-                <span className="font-sans font-medium text-sm truncate text-[#171717]">Tasks</span>
+                <span className="font-sans font-medium text-sm truncate text-[#171717] dark:text-[#F5F5F5]">Tasks</span>
               </div>
             </div>
 
             {/* Projects */}
-            <div className="w-full h-9 gap-3 px-3 py-2 rounded-xl hover:bg-[#F5F5F5] transition-colors flex items-center cursor-pointer">
+            <div className="w-full h-9 gap-3 px-3 py-2 rounded-xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors flex items-center cursor-pointer">
               <div className="relative w-4 h-4 shrink-0 flex items-center justify-center">
-                <GalleryVerticalEnd className="w-4 h-4 text-neutral-600" />
+                <GalleryVerticalEnd className="w-4 h-4 text-neutral-600 dark:text-[#A3A3A3]" />
               </div>
               <div className="flex-1 min-w-0">
-                <span className="font-sans font-medium text-sm truncate text-[#171717]">Projects</span>
+                <span className="font-sans font-medium text-sm truncate text-[#171717] dark:text-[#F5F5F5]">Projects</span>
               </div>
             </div>
           </div>

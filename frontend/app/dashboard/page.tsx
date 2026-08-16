@@ -198,19 +198,19 @@ export default function Dashboard() {
   const activeColumn = columns.find((c) => c.id === activeColumnId);
 
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="min-h-screen flex bg-white dark:bg-[#0A0A0A] transition-colors duration-200">
       {/* Sidebar Container */}
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen
-          ? "w-[10rem] sm:w-[12rem] md:w-[14rem] lg:w-[16rem]"
-          : "w-0"
+        className={`transition-all duration-300 ease-in-out relative z-40 ${isSidebarOpen
+          ? "w-[10rem] sm:w-[12rem] md:w-[14rem] lg:w-[16rem] overflow-visible"
+          : "w-0 overflow-hidden"
           }`}
       >
         <Sidebar />
       </div>
 
       {/* Main Content Area */}
-      <main className="flex flex-col flex-1 min-w-0">
+      <main className="flex flex-col flex-1 min-w-0 bg-white dark:bg-[#0A0A0A] transition-colors duration-200 relative z-0">
         {/* Top Navbar Component */}
         <Navbar isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
 
@@ -264,18 +264,18 @@ export default function Dashboard() {
 
       {/* Add Task Modal / Form */}
       {isAddTaskOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form
             onSubmit={handleCreateTask}
-            className="bg-white rounded-lg border border-[#E5E5E5] shadow-lg w-full max-w-md p-5 flex flex-col gap-4"
+            className="bg-white dark:bg-[#171717] rounded-lg border border-[#E5E5E5] dark:border-[#2A2A2A] shadow-xl w-full max-w-md p-5 flex flex-col gap-4 transition-colors duration-200"
           >
-            <div className="flex items-center justify-between border-b border-[#E5E5E5] pb-3">
-              <h3 className="text-sm font-semibold text-[#171717]">
+            <div className="flex items-center justify-between border-b border-[#E5E5E5] dark:border-[#2A2A2A] pb-3">
+              <h3 className="text-sm font-semibold text-[#171717] dark:text-[#F5F5F5]">
                 Add Task to "{activeColumn?.title}"
               </h3>
               <button
                 onClick={handleCloseModal}
-                className="text-[#737373] hover:text-[#171717] transition-colors p-1"
+                className="text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5] transition-colors p-1"
                 type="button"
                 aria-label="Close modal"
               >
@@ -285,7 +285,7 @@ export default function Dashboard() {
 
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-[#171717]">
+                <label className="text-xs font-medium text-[#171717] dark:text-[#F5F5F5]">
                   Task Title <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -294,58 +294,58 @@ export default function Dashboard() {
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   placeholder="e.g. Write API Documentation"
-                  className="w-full px-3 py-2 text-xs border border-[#E5E5E5] rounded focus:outline-none focus:border-[#171717]"
+                  className="w-full px-3 py-2 text-xs border border-[#E5E5E5] dark:border-[#2A2A2A] bg-white dark:bg-[#111111] text-[#171717] dark:text-[#F5F5F5] placeholder:text-[#A3A3A3] dark:placeholder:text-[#737373] rounded focus:outline-none focus:border-[#171717] dark:focus:border-[#A3A3A3]"
                   autoFocus
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-[#171717]">Assignee</label>
+                  <label className="text-xs font-medium text-[#171717] dark:text-[#F5F5F5]">Assignee</label>
                   <input
                     type="text"
                     value={newTaskAssignee}
                     onChange={(e) => setNewTaskAssignee(e.target.value)}
                     placeholder="Admin"
-                    className="w-full px-3 py-2 text-xs border border-[#E5E5E5] rounded focus:outline-none focus:border-[#171717]"
+                    className="w-full px-3 py-2 text-xs border border-[#E5E5E5] dark:border-[#2A2A2A] bg-white dark:bg-[#111111] text-[#171717] dark:text-[#F5F5F5] placeholder:text-[#A3A3A3] dark:placeholder:text-[#737373] rounded focus:outline-none focus:border-[#171717] dark:focus:border-[#A3A3A3]"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-[#171717]">Due Date</label>
+                  <label className="text-xs font-medium text-[#171717] dark:text-[#F5F5F5]">Due Date</label>
                   <input
                     type="text"
                     value={newTaskDueDate}
                     onChange={(e) => setNewTaskDueDate(e.target.value)}
                     placeholder="29 Jul"
-                    className="w-full px-3 py-2 text-xs border border-[#E5E5E5] rounded focus:outline-none focus:border-[#171717]"
+                    className="w-full px-3 py-2 text-xs border border-[#E5E5E5] dark:border-[#2A2A2A] bg-white dark:bg-[#111111] text-[#171717] dark:text-[#F5F5F5] placeholder:text-[#A3A3A3] dark:placeholder:text-[#737373] rounded focus:outline-none focus:border-[#171717] dark:focus:border-[#A3A3A3]"
                   />
                 </div>
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-[#171717]">Tag</label>
+                <label className="text-xs font-medium text-[#171717] dark:text-[#F5F5F5]">Tag</label>
                 <input
                   type="text"
                   value={newTaskTag}
                   onChange={(e) => setNewTaskTag(e.target.value)}
                   placeholder="Deployment"
-                  className="w-full px-3 py-2 text-xs border border-[#E5E5E5] rounded focus:outline-none focus:border-[#171717]"
+                  className="w-full px-3 py-2 text-xs border border-[#E5E5E5] dark:border-[#2A2A2A] bg-white dark:bg-[#111111] text-[#171717] dark:text-[#F5F5F5] placeholder:text-[#A3A3A3] dark:placeholder:text-[#737373] rounded focus:outline-none focus:border-[#171717] dark:focus:border-[#A3A3A3]"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E5E5]">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E5E5] dark:border-[#2A2A2A]">
               <button
                 onClick={handleCloseModal}
                 type="button"
-                className="px-3 py-1.5 text-xs font-medium text-[#171717] border border-[#E5E5E5] rounded hover:bg-[#F5F5F5] transition-colors cursor-pointer"
+                className="px-3 py-1.5 text-xs font-medium text-[#171717] dark:text-[#F5F5F5] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-3 py-1.5 text-xs font-medium text-white bg-[#171717] rounded hover:bg-[#262626] transition-colors cursor-pointer"
+                className="px-3 py-1.5 text-xs font-medium text-white dark:text-black bg-[#171717] dark:bg-[#F5F5F5] rounded hover:bg-[#262626] dark:hover:bg-neutral-200 transition-colors cursor-pointer"
               >
                 Add Task
               </button>
