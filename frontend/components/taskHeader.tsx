@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Search, Columns3, Filter, Plus, List, Grid2x2, Check } from "lucide-react";
+import { Search, Columns3, Filter, Plus, List, Grid2x2, Check, Command } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 
 export interface VisibleFields {
@@ -19,6 +19,8 @@ interface TaskHeaderProps {
   visibleFields: VisibleFields;
   onToggleField?: (field: keyof VisibleFields) => void;
   onAddTask?: () => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 export default function TaskHeader({
@@ -27,12 +29,23 @@ export default function TaskHeader({
   visibleFields,
   onToggleField,
   onAddTask,
+  searchQuery = "",
+  onSearchChange,
 }: TaskHeaderProps) {
   const [isFieldsOpen, setIsFieldsOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Synchronize local activeTab state with external viewMode prop
   const [activeTab, setActiveTab] = useState<"board" | "list">(viewMode);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus search input when opened
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
 
   // Sync internal state if prop changes
   useEffect(() => {
@@ -78,6 +91,21 @@ export default function TaskHeader({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Handle keyboard shortcut for Cmd+F / Ctrl+F and Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+      if (e.key === "Escape" && isSearchOpen) {
+        setIsSearchOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isSearchOpen]);
+
   const fieldsList: { key: keyof VisibleFields; label: string }[] = [
     { key: "priority", label: "Priority" },
     { key: "members", label: "Members" },
@@ -94,14 +122,43 @@ export default function TaskHeader({
 
       {/* Action Buttons Group */}
       <div className="flex items-center gap-2">
-        {/* Search Button */}
-        <button
-          className="w-8 h-8 py-2 px-1.5 flex items-center justify-center border border-[#E5E5E5] dark:border-[#2A2A2A] rounded text-black dark:text-[#F5F5F5] hover:bg-neutral-100 dark:hover:bg-[#262626] transition-colors cursor-pointer focus:outline-none"
-          title="Search"
-          type="button"
-        >
-          <Search className="w-3.5 h-3.5" />
-        </button>
+        {/* Dynamic Expandable Search Input / Button */}
+        {isSearchOpen ? (
+          <div className="w-[373px] h-8 flex items-center gap-2 px-2.5 bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-md transition-all shadow-2xs">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSearchOpen(false);
+                if (onSearchChange) onSearchChange("");
+              }}
+              className="text-[#171717] dark:text-[#F5F5F5] hover:opacity-70 transition-opacity cursor-pointer flex items-center justify-center p-0.5 -ml-0.5 rounded"
+              title="Close Search"
+            >
+              <Search className="w-3.5 h-3.5 stroke-[2.2] shrink-0" />
+            </button>
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Design Homepage"
+              value={searchQuery}
+              onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+              className="flex-1 text-xs font-semibold outline-none bg-transparent text-[#171717] dark:text-[#F5F5F5] placeholder:text-[#525252] dark:placeholder:text-[#A3A3A3] placeholder:font-medium"
+            />
+            <kbd className="h-5 px-1.5 flex items-center gap-0.5 text-[11px] font-bold text-[#525252] dark:text-[#A3A3A3] bg-[#F5F5F5] dark:bg-[#262626] rounded border border-[#E5E5E5] dark:border-[#2A2A2A] select-none shrink-0">
+              <Command className="w-3 h-3 stroke-[2.5] text-[#525252] dark:text-[#A3A3A3]" />
+              <span className="font-bold">F</span>
+            </kbd>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsSearchOpen(true)}
+            className="w-8 h-8 flex items-center justify-center border border-[#E5E5E5] dark:border-[#2A2A2A] rounded bg-white dark:bg-[#171717] text-[#171717] dark:text-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors cursor-pointer focus:outline-none"
+            title="Open Search"
+          >
+            <Search className="w-3.5 h-3.5 stroke-[2.2]" />
+          </button>
+        )}
 
         {/* Fields Button */}
         <div className="relative" ref={dropdownRef}>

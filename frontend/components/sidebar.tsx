@@ -36,13 +36,10 @@ export default function Sidebar() {
   return (
     <aside
       className="
-        w-[10rem]
-        sm:w-[12rem]
-        md:w-[14rem]
-        lg:w-[16rem]
+        w-[13.5rem]
         min-h-screen
         shrink-0
-        border-r-2 border-[#E5E5E5] dark:border-[#2A2A2A]
+        border-r border-[#E5E5E5] dark:border-[#2A2A2A]
         bg-[#FAFAFA] dark:bg-[#111111]
         flex flex-col
         relative z-40
@@ -50,7 +47,7 @@ export default function Sidebar() {
       "
     >
       {/* Header Profile Section */}
-      <div ref={profileRef} className="relative z-50 w-full h-[4rem] flex items-center p-2 border-b border-transparent">
+      <div ref={profileRef} className="relative z-50 w-full h-14 flex items-center p-2 border-b border-transparent">
         <div
           onClick={() => {
             setIsProfileOpen(!isProfileOpen);
@@ -222,11 +219,11 @@ export default function Sidebar() {
       </div>
 
       {/* Sidebar Content */}
-      <div className="w-full flex flex-col p-2">
+      <div className="w-full flex flex-col p-1.5">
         {/* Workspace Selector */}
-        <div className="w-full h-8 flex items-center px-3">
+        <div className="w-full h-7 flex items-center px-2.5">
           {/* Workspace text */}
-          <div className="flex-1 min-w-0 font-sans font-medium text-sm truncate text-neutral-800 dark:text-[#F5F5F5]">
+          <div className="flex-1 min-w-0 font-sans font-medium text-xs truncate text-neutral-500 dark:text-[#A3A3A3]">
             Workspace
           </div>
 
@@ -237,7 +234,7 @@ export default function Sidebar() {
             aria-label="Toggle Workspace navigation"
           >
             <ChevronDownIcon
-              className={`w-4 h-4 text-neutral-600 dark:text-[#A3A3A3] transition-transform duration-300 ${isOpen ? "rotate-0" : "-rotate-180"
+              className={`w-3.5 h-3.5 text-neutral-500 dark:text-[#A3A3A3] transition-transform duration-300 ${isOpen ? "rotate-0" : "-rotate-180"
                 }`}
             />
           </button>
@@ -245,24 +242,24 @@ export default function Sidebar() {
 
         {/* Navigation */}
         {isOpen && (
-          <div className="w-full flex flex-col gap-1 mt-1">
+          <div className="w-full flex flex-col gap-0.5 mt-0.5">
             {/* Tasks */}
-            <div className="w-full h-9 gap-3 px-3 py-2 rounded-xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors flex items-center cursor-pointer">
+            <div className="w-full h-8 gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors flex items-center cursor-pointer">
               <div className="relative w-4 h-4 shrink-0 flex items-center justify-center">
                 <LayoutDashboard className="w-4 h-4 text-neutral-600 dark:text-[#A3A3A3]" />
               </div>
               <div className="flex-1 min-w-0">
-                <span className="font-sans font-medium text-sm truncate text-[#171717] dark:text-[#F5F5F5]">Tasks</span>
+                <span className="font-sans font-medium text-xs truncate text-[#171717] dark:text-[#F5F5F5]">Tasks</span>
               </div>
             </div>
 
             {/* Projects */}
-            <div className="w-full h-9 gap-3 px-3 py-2 rounded-xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors flex items-center cursor-pointer">
+            <div className="w-full h-8 gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors flex items-center cursor-pointer">
               <div className="relative w-4 h-4 shrink-0 flex items-center justify-center">
                 <GalleryVerticalEnd className="w-4 h-4 text-neutral-600 dark:text-[#A3A3A3]" />
               </div>
               <div className="flex-1 min-w-0">
-                <span className="font-sans font-medium text-sm truncate text-[#171717] dark:text-[#F5F5F5]">Projects</span>
+                <span className="font-sans font-medium text-xs truncate text-[#171717] dark:text-[#F5F5F5]">Projects</span>
               </div>
             </div>
           </div>

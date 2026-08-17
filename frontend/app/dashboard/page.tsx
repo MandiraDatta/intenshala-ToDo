@@ -13,6 +13,9 @@ export default function Dashboard() {
   // View mode state: 'board' vs 'list'
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
 
+  // Search query state for live task filtering
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Dynamic state for visible fields - members, dueDate, and labels enabled by default
   const [visibleFields, setVisibleFields] = useState<VisibleFields>({
     priority: false,
@@ -41,16 +44,18 @@ export default function Dashboard() {
       tasks: [
         {
           id: "t1",
-          title: "Write API Documentation",
+          title: "Design Homepage",
           assignee: { name: "Admin" },
-          dueDate: "29 Jul",
-          tags: ["Deployment", "Deployment"],
+          dueDate: "12 Sep 2026",
+          priority: "High",
+          tags: ["Design", "UI"],
         },
         {
           id: "t2",
           title: "Implement Search Function",
           assignee: { name: "Admin" },
           dueDate: "29 Jul",
+          priority: "Medium",
           tags: ["Deployment", "Deployment"],
         },
         {
@@ -58,6 +63,7 @@ export default function Dashboard() {
           title: "Deploy to Production",
           assignee: { name: "Admin" },
           dueDate: "29 Jul",
+          priority: "High",
           tags: ["Deployment", "Deployment"],
         },
       ] as Task[],
@@ -131,6 +137,21 @@ export default function Dashboard() {
     },
   ]);
 
+  // Dynamic task filtering based on search query - show only columns with matching data when searching
+  const filteredColumns = columns
+    .map((col) => ({
+      ...col,
+      tasks: col.tasks.filter((task) => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        const matchesTitle = task.title.toLowerCase().includes(q);
+        const matchesAssignee = task.assignee?.name?.toLowerCase().includes(q);
+        const matchesTags = task.tags?.some((t) => t.toLowerCase().includes(q));
+        return matchesTitle || matchesAssignee || matchesTags;
+      }),
+    }))
+    .filter((col) => (searchQuery.trim() ? col.tasks.length > 0 : true));
+
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width:767px)");
 
@@ -202,7 +223,7 @@ export default function Dashboard() {
       {/* Sidebar Container */}
       <div
         className={`transition-all duration-300 ease-in-out relative z-40 ${isSidebarOpen
-          ? "w-[10rem] sm:w-[12rem] md:w-[14rem] lg:w-[16rem] overflow-visible"
+          ? "w-[13.5rem] overflow-visible"
           : "w-0 overflow-hidden"
           }`}
       >
@@ -224,12 +245,14 @@ export default function Dashboard() {
               visibleFields={visibleFields}
               onToggleField={handleToggleField}
               onAddTask={() => handleAddTask("todo")}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
             />
 
             {/* Dynamic Layout: Grid for Board view Mode, Vertical Accordion Stack for List view Mode */}
             {viewMode === "board" ? (
               <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
-                {columns.map((col) => (
+                {filteredColumns.map((col) => (
                   <KanbanColumn
                     key={col.id}
                     id={col.id}
@@ -244,7 +267,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="w-full flex flex-col gap-3">
-                {columns.map((col) => (
+                {filteredColumns.map((col) => (
                   <KanbanColumn
                     key={col.id}
                     id={col.id}
