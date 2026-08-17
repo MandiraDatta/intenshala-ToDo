@@ -1,5 +1,7 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import {
   ChevronDownIcon,
@@ -13,6 +15,7 @@ import { Sun, Gear, Square } from "@phosphor-icons/react";
 import { useTheme, COLOR_MODES } from "@/context/ThemeContext";
 
 export default function Sidebar() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState<"theme" | "color" | null>(null);
@@ -244,24 +247,38 @@ export default function Sidebar() {
         {isOpen && (
           <div className="w-full flex flex-col gap-0.5 mt-0.5">
             {/* Tasks */}
-            <div className="w-full h-8 gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors flex items-center cursor-pointer">
+            <Link
+              href="/dashboard"
+              className={`w-full h-8 gap-2.5 px-2.5 py-1.5 rounded-lg transition-colors flex items-center cursor-pointer ${
+                pathname === "/dashboard" || pathname.startsWith("/task")
+                  ? "bg-[#EAEAEA] dark:bg-[#262626] font-semibold"
+                  : "hover:bg-[#F5F5F5] dark:hover:bg-[#262626]"
+              }`}
+            >
               <div className="relative w-4 h-4 shrink-0 flex items-center justify-center">
                 <LayoutDashboard className="w-4 h-4 text-neutral-600 dark:text-[#A3A3A3]" />
               </div>
               <div className="flex-1 min-w-0">
                 <span className="font-sans font-medium text-xs truncate text-[#171717] dark:text-[#F5F5F5]">Tasks</span>
               </div>
-            </div>
+            </Link>
 
             {/* Projects */}
-            <div className="w-full h-8 gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors flex items-center cursor-pointer">
+            <Link
+              href="/projects"
+              className={`w-full h-8 gap-2.5 px-2.5 py-1.5 rounded-lg transition-colors flex items-center cursor-pointer ${
+                pathname.startsWith("/projects")
+                  ? "bg-[#EAEAEA] dark:bg-[#262626] font-semibold"
+                  : "hover:bg-[#F5F5F5] dark:hover:bg-[#262626]"
+              }`}
+            >
               <div className="relative w-4 h-4 shrink-0 flex items-center justify-center">
                 <GalleryVerticalEnd className="w-4 h-4 text-neutral-600 dark:text-[#A3A3A3]" />
               </div>
               <div className="flex-1 min-w-0">
                 <span className="font-sans font-medium text-xs truncate text-[#171717] dark:text-[#F5F5F5]">Projects</span>
               </div>
-            </div>
+            </Link>
           </div>
         )}
       </div>

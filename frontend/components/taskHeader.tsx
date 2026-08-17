@@ -4,6 +4,10 @@ import { useState, useRef, useEffect } from "react";
 import { Search, Columns3, Filter, Plus, List, Grid2x2, Check, Command } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 
+import FilterMenu from "./projects/FilterMenu";
+import { FILTER_CONFIGS } from "./projects/data";
+import { FilterConfig, ActiveFilters } from "./projects/types";
+
 export interface VisibleFields {
   priority: boolean;
   members: boolean;
@@ -14,6 +18,8 @@ export interface VisibleFields {
 }
 
 interface TaskHeaderProps {
+  title?: string;
+  addLabel?: string;
   viewMode: "board" | "list";
   onViewModeChange: (mode: "board" | "list") => void;
   visibleFields: VisibleFields;
@@ -21,9 +27,14 @@ interface TaskHeaderProps {
   onAddTask?: () => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
+  filterConfigs?: FilterConfig[];
+  activeFilters?: ActiveFilters;
+  onSelectFilter?: (key: string, value: string | null) => void;
 }
 
 export default function TaskHeader({
+  title = "Tasks",
+  addLabel = "Add Task",
   viewMode,
   onViewModeChange,
   visibleFields,
@@ -31,9 +42,13 @@ export default function TaskHeader({
   onAddTask,
   searchQuery = "",
   onSearchChange,
+  filterConfigs = FILTER_CONFIGS,
+  activeFilters = {},
+  onSelectFilter,
 }: TaskHeaderProps) {
   const [isFieldsOpen, setIsFieldsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Synchronize local activeTab state with external viewMode prop
   const [activeTab, setActiveTab] = useState<"board" | "list">(viewMode);
@@ -117,8 +132,10 @@ export default function TaskHeader({
 
   return (
     <div className="w-full flex items-center justify-between gap-4 py-1 relative">
-      {/* Tasks Title */}
-      <h1 className="text-base font-semibold text-neutral-900 dark:text-[#F5F5F5]">Tasks</h1>
+      {/* Title */}
+      <h1 className="text-base font-semibold text-neutral-900 dark:text-[#F5F5F5]">
+        {title}
+      </h1>
 
       {/* Action Buttons Group */}
       <div className="flex items-center gap-2">
@@ -139,7 +156,7 @@ export default function TaskHeader({
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Design Homepage"
+              placeholder={`Search ${title.toLowerCase()}...`}
               value={searchQuery}
               onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
               className="flex-1 text-xs font-semibold outline-none bg-transparent text-[#171717] dark:text-[#F5F5F5] placeholder:text-[#525252] dark:placeholder:text-[#A3A3A3] placeholder:font-medium"
@@ -165,10 +182,11 @@ export default function TaskHeader({
           <button
             type="button"
             onClick={() => setIsFieldsOpen(!isFieldsOpen)}
-            className={`w-8 md:w-[4.875rem] h-8 px-2.5 flex items-center justify-center gap-1.5 border border-[#E5E5E5] dark:border-[#2A2A2A] rounded text-xs font-medium transition-colors cursor-pointer focus:outline-none ${isFieldsOpen
-              ? "bg-neutral-100 dark:bg-[#262626] border-neutral-400 dark:border-neutral-600"
-              : "bg-white dark:bg-[#171717] hover:bg-neutral-100 dark:hover:bg-[#262626] text-neutral-700 dark:text-[#F5F5F5]"
-              }`}
+            className={`w-8 md:w-[4.875rem] h-8 px-2.5 flex items-center justify-center gap-1.5 border border-[#E5E5E5] dark:border-[#2A2A2A] rounded text-xs font-medium transition-colors cursor-pointer focus:outline-none ${
+              isFieldsOpen
+                ? "bg-neutral-100 dark:bg-[#262626] border-neutral-400 dark:border-neutral-600"
+                : "bg-white dark:bg-[#171717] hover:bg-neutral-100 dark:hover:bg-[#262626] text-neutral-700 dark:text-[#F5F5F5]"
+            }`}
             title="Fields"
           >
             <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
@@ -181,16 +199,17 @@ export default function TaskHeader({
 
           {/* Figma Popover Menu for Fields */}
           {isFieldsOpen && (
-            <div className="absolute right-0 mt-1 w-[18.6875rem] h-[19.25rem] bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl shadow-xl z-50 p-4 flex flex-col gap-4">
+            <div className="absolute right-0 mt-1 w-[18.6875rem] bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl shadow-xl z-50 p-4 flex flex-col gap-4">
               {/* Segmented Control Tabs: List vs Board */}
-              <div className="w-[16.6875rem] h-[2.25rem] flex rounded-lg border border-[#E5E5E5] dark:border-[#2A2A2A] overflow-hidden bg-[#F5F5F5] dark:bg-[#111111] shrink-0">
+              <div className="w-full h-[2.25rem] flex rounded-lg border border-[#E5E5E5] dark:border-[#2A2A2A] overflow-hidden bg-[#F5F5F5] dark:bg-[#111111] shrink-0">
                 <button
                   type="button"
                   onClick={() => handleTabChange("list")}
-                  className={`flex-1 h-full flex items-center justify-center gap-2 text-xs font-medium transition-colors border-r border-[#E5E5E5] dark:border-[#2A2A2A] ${activeTab === "list"
-                    ? "bg-white dark:bg-[#171717] text-[#171717] dark:text-[#F5F5F5]"
-                    : "bg-[#F5F5F5] dark:bg-[#111111] text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5]"
-                    }`}
+                  className={`flex-1 h-full flex items-center justify-center gap-2 text-xs font-medium transition-colors border-r border-[#E5E5E5] dark:border-[#2A2A2A] ${
+                    activeTab === "list"
+                      ? "bg-white dark:bg-[#171717] text-[#171717] dark:text-[#F5F5F5]"
+                      : "bg-[#F5F5F5] dark:bg-[#111111] text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5]"
+                  }`}
                 >
                   <List size={14} />
                   List
@@ -198,10 +217,11 @@ export default function TaskHeader({
                 <button
                   type="button"
                   onClick={() => handleTabChange("board")}
-                  className={`flex-1 h-full flex items-center justify-center gap-2 text-xs font-medium transition-colors ${activeTab === "board"
-                    ? "bg-white dark:bg-[#171717] text-[#171717] dark:text-[#F5F5F5]"
-                    : "bg-[#F5F5F5] dark:bg-[#111111] text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5]"
-                    }`}
+                  className={`flex-1 h-full flex items-center justify-center gap-2 text-xs font-medium transition-colors ${
+                    activeTab === "board"
+                      ? "bg-white dark:bg-[#171717] text-[#171717] dark:text-[#F5F5F5]"
+                      : "bg-[#F5F5F5] dark:bg-[#111111] text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5]"
+                  }`}
                 >
                   <Grid2x2 size={14} />
                   Board
@@ -219,12 +239,15 @@ export default function TaskHeader({
                       onClick={() => handleToggle(key)}
                       className="flex h-8 items-center justify-between px-2.5 py-1.5 hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded-md text-xs font-medium text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer w-full text-left"
                     >
-                      <span className="text-xs font-sans h-4 text-[#171717] dark:text-[#F5F5F5]">{label}</span>
+                      <span className="text-xs font-sans h-4 text-[#171717] dark:text-[#F5F5F5]">
+                        {label}
+                      </span>
                       <div
-                        className={`w-4 h-4 rounded-sm flex items-center justify-center transition-colors ${isChecked
-                          ? "bg-[#171717] dark:bg-[#F5F5F5] text-white dark:text-black"
-                          : "border border-[#D4D4D4] dark:border-[#2A2A2A] bg-white dark:bg-[#111111]"
-                          }`}
+                        className={`w-4 h-4 rounded-sm flex items-center justify-center transition-colors ${
+                          isChecked
+                            ? "bg-[#171717] dark:bg-[#F5F5F5] text-white dark:text-black"
+                            : "border border-[#D4D4D4] dark:border-[#2A2A2A] bg-white dark:bg-[#111111]"
+                        }`}
                       >
                         {isChecked && <Check size={10} strokeWidth={3} />}
                       </div>
@@ -237,25 +260,42 @@ export default function TaskHeader({
         </div>
 
         {/* Filter Button */}
-        <button
-          className="w-8 h-8 py-2 px-1.5 rounded border border-[#E5E5E5] dark:border-[#2A2A2A] hover:bg-neutral-100 dark:hover:bg-[#262626] transition-colors cursor-pointer focus:outline-none flex items-center justify-center"
-          title="Filter"
-          type="button"
-        >
-          <Filter className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5]" />
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setIsFilterOpen(!isFilterOpen);
+              setIsFieldsOpen(false);
+            }}
+            className={`w-8 h-8 rounded border border-[#E5E5E5] dark:border-[#2A2A2A] transition-colors cursor-pointer focus:outline-none flex items-center justify-center ${
+              isFilterOpen
+                ? "bg-neutral-100 dark:bg-[#262626] border-neutral-400 dark:border-neutral-600"
+                : "bg-white dark:bg-[#171717] hover:bg-neutral-100 dark:hover:bg-[#262626]"
+            }`}
+            title="Filter"
+          >
+            <Filter className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5]" />
+          </button>
+          <FilterMenu
+            filters={filterConfigs}
+            activeFilters={activeFilters}
+            onSelectFilter={onSelectFilter || (() => {})}
+            isOpen={isFilterOpen}
+            onClose={() => setIsFilterOpen(false)}
+          />
+        </div>
 
-        {/* Add Task Button */}
+        {/* Add Button */}
         <button
           onClick={onAddTask}
           style={{ backgroundColor: currentColorHex }}
-          className="w-8 md:w-24 h-8 px-1.5 py-2 flex items-center justify-center gap-1 text-white rounded-md text-xs font-medium transition-all cursor-pointer focus:outline-none shadow-sm hover:opacity-90"
-          title="Add task"
+          className="w-8 md:w-auto md:px-3 h-8 px-1.5 py-2 flex items-center justify-center gap-1 text-white rounded-md text-xs font-medium transition-all cursor-pointer focus:outline-none shadow-sm hover:opacity-90 shrink-0"
+          title={addLabel}
           type="button"
         >
           <Plus className="w-3.5 h-3.5 shrink-0" />
           <span className="hidden md:flex font-sans font-medium text-xs leading-4 tracking-normal align-middle text-[#FAFAFA]">
-            Add Task
+            {addLabel}
           </span>
         </button>
       </div>
