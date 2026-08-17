@@ -10,9 +10,11 @@ import {
   GalleryVerticalEnd,
   Moon,
   Check,
+  User as UserIcon,
 } from "lucide-react";
 import { Sun, Gear, Square } from "@phosphor-icons/react";
 import { useTheme, COLOR_MODES } from "@/context/ThemeContext";
+import { useUser } from "@/context/UserContext";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -20,6 +22,7 @@ export default function Sidebar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState<"theme" | "color" | null>(null);
   const { theme, setTheme, colorMode, setColorMode } = useTheme();
+  const { user } = useUser();
   const profileRef = useRef<HTMLDivElement>(null);
 
   // Close profile dropdown when clicking outside
@@ -59,13 +62,13 @@ export default function Sidebar() {
           className="w-full flex items-center gap-2 px-3 py-1.5 min-w-0 hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors rounded-xl cursor-pointer select-none"
         >
           {/* Avatar */}
-          <div className="w-8 h-8 shrink-0 bg-[#FFFFFF] dark:bg-[#171717] rounded-2xl overflow-hidden">
-            <Image src="/Pasted image.png" alt="Avatar" width={32} height={32} className="rounded-2xl" />
+          <div className="w-8 h-8 shrink-0 bg-[#FFFFFF] dark:bg-[#171717] rounded-2xl overflow-hidden flex items-center justify-center">
+            <Image src={user.avatar || "/Pasted image.png"} alt="Avatar" width={32} height={32} className="w-8 h-8 rounded-2xl object-cover" />
           </div>
 
           {/* Name */}
           <div className="min-w-0 flex-1 font-sans font-bold text-sm leading-none truncate text-neutral-800 dark:text-[#F5F5F5]">
-            Dexter
+            {user.fullName || "Dexter"}
           </div>
 
           {/* Profile dropdown icon */}
@@ -77,18 +80,22 @@ export default function Sidebar() {
         {/* Profile Dropdown Menu */}
         {isProfileOpen && (
           <div className="absolute top-14 left-2 right-2 max-w-[calc(100%-1rem)] bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-md shadow-2xl p-3.5 flex flex-col z-50 transition-colors duration-200">
-            {/* Header: User Info */}
-            <div className="h-[7.5rem] flex flex-col items-center justify-center pb-3 pt-1">
+            {/* Header: User Info (Clicking navigates to /profile) */}
+            <Link
+              href="/profile"
+              onClick={() => setIsProfileOpen(false)}
+              className="h-[7.5rem] flex flex-col items-center justify-center pb-3 pt-1 rounded-lg hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors cursor-pointer"
+            >
               <div className="w-10 h-10 rounded-full overflow-hidden bg-[#F5F5F5] dark:bg-[#262626] flex items-center justify-center shrink-0">
-                <Image src="/Pasted image.png" alt="Dexter" width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
+                <Image src={user.avatar || "/Pasted image.png"} alt={user.fullName} width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
               </div>
               <span className="font-sans font-semibold text-sm text-[#171717] dark:text-[#F5F5F5] mt-2 leading-none">
-                Dexter
+                {user.fullName || "Dexter"}
               </span>
               <span className="font-sans text-xs text-[#737373] dark:text-[#A3A3A3] mt-1 leading-none truncate max-w-full">
-                Dexter@gmail.com
+                {user.email || "dexter@gmail.com"}
               </span>
-            </div>
+            </Link>
 
             {/* Divider */}
             <div className="w-full h-px bg-[#E5E5E5] dark:bg-[#2A2A2A] my-1" />
@@ -205,8 +212,8 @@ export default function Sidebar() {
 
               {/* Settings */}
               <div onMouseEnter={() => setActiveSubmenu(null)}>
-                <button
-                  type="button"
+                <Link
+                  href="/profile"
                   onClick={() => setIsProfileOpen(false)}
                   className="w-full flex items-center justify-between h-9 px-3 gap-2.5 rounded-2xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer text-left"
                 >
@@ -214,7 +221,7 @@ export default function Sidebar() {
                   <span className="font-sans text-xs font-medium flex-1 text-[#171717] dark:text-[#F5F5F5]">
                     Settings
                   </span>
-                </button>
+                </Link>
               </div>
             </div>
           </div>
