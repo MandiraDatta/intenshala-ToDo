@@ -4,10 +4,14 @@ import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import TaskHeader, { VisibleFields } from "@/components/taskHeader";
 import KanbanColumn, { Task } from "@/components/kanbanColumn";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { X } from "lucide-react";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { taskService } from "@/services/task.service";
+import { preferenceService } from "@/services/preference.service";
 
 export default function Dashboard() {
+  const { activeWorkspace } = useWorkspace();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
 
   // View mode state: 'board' vs 'list'
@@ -16,7 +20,7 @@ export default function Dashboard() {
   // Search query state for live task filtering
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Dynamic state for visible fields - members, dueDate, and labels enabled by default
+  // Dynamic state for visible fields
   const [visibleFields, setVisibleFields] = useState<VisibleFields>({
     priority: false,
     members: true,
@@ -28,15 +32,16 @@ export default function Dashboard() {
 
   // State to manage Add Task modal visibility and targeted column ID
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
-  const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
+  const [activeColumnId, setActiveColumnId] = useState<string | null>("todo");
 
   // Form input states
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskAssignee, setNewTaskAssignee] = useState("Admin");
   const [newTaskDueDate, setNewTaskDueDate] = useState("29 Jul");
   const [newTaskTag, setNewTaskTag] = useState("Deployment");
+  const [loading, setLoading] = useState(false);
 
-  // Initial column data matching reference design
+  // Dynamic column state
   const [columns, setColumns] = useState([
     {
       id: "todo",
@@ -56,15 +61,7 @@ export default function Dashboard() {
           assignee: { name: "Admin" },
           dueDate: "29 Jul",
           priority: "Medium",
-          tags: ["Deployment", "Deployment"],
-        },
-        {
-          id: "t3",
-          title: "Deploy to Production",
-          assignee: { name: "Admin" },
-          dueDate: "29 Jul",
-          priority: "High",
-          tags: ["Deployment", "Deployment"],
+          tags: ["Deployment"],
         },
       ] as Task[],
     },
@@ -77,14 +74,8 @@ export default function Dashboard() {
           title: "Code Review Completed",
           assignee: { name: "Admin" },
           dueDate: "29 Jul",
-          tags: ["Deployment", "Deployment"],
-        },
-        {
-          id: "d2",
-          title: "Design Mockups Finalized",
-          assignee: { name: "Admin" },
-          dueDate: "29 Jul",
-          tags: ["Deployment", "Deployment"],
+          priority: "Medium",
+          tags: ["Deployment"],
         },
       ] as Task[],
     },
@@ -97,21 +88,8 @@ export default function Dashboard() {
           title: "Feature Testing Passed",
           assignee: { name: "QA Team" },
           dueDate: "30 Jul",
-          tags: ["Testing", "Passed"],
-        },
-        {
-          id: "c2",
-          title: "UI Design Updated",
-          assignee: { name: "Designer" },
-          dueDate: "31 Jul",
-          tags: ["Design", "Updated"],
-        },
-        {
-          id: "c3",
-          title: "Security Audit Scheduled",
-          assignee: { name: "Security" },
-          dueDate: "01 Aug",
-          tags: ["Audit", "Scheduled"],
+          priority: "Low",
+          tags: ["Testing"],
         },
       ] as Task[],
     },
@@ -124,58 +102,105 @@ export default function Dashboard() {
           title: "UI Review Pending",
           assignee: { name: "Design" },
           dueDate: "29 Jul",
-          tags: ["Review", "Pending"],
-        },
-        {
-          id: "oh2",
-          title: "Backend API Optimization",
-          assignee: { name: "Dev Team" },
-          dueDate: "30 Jul",
-          tags: ["Backend", "Performance"],
+          priority: "Low",
+          tags: ["Review"],
         },
       ] as Task[],
     },
   ]);
 
-  // Dynamic task filtering based on search query - show only columns with matching data when searching
-  const filteredColumns = columns
-    .map((col) => ({
-      ...col,
-      tasks: col.tasks.filter((task) => {
-        if (!searchQuery.trim()) return true;
-        const q = searchQuery.toLowerCase();
-        const matchesTitle = task.title.toLowerCase().includes(q);
-        const matchesAssignee = task.assignee?.name?.toLowerCase().includes(q);
-        const matchesTags = task.tags?.some((t) => t.toLowerCase().includes(q));
-        return matchesTitle || matchesAssignee || matchesTags;
-      }),
-    }))
-    .filter((col) => (searchQuery.trim() ? col.tasks.length > 0 : true));
+  // Restore stored view preferences
+  useEffect(() => {
+    if (!activeWorkspace?.id) return;
+    preferenceService.getViewPreference(activeWorkspace.id, 'TASK')
+      .then((pref) => {
+        if (pref) {
+          if (pref.viewType === 'LIST' || pref.viewType === 'BOARD') {
+            setViewMode(pref.viewType.toLowerCase() as "board" | "list");
+          }
+        }
+      })
+      .catch(() => {});
+  }, [activeWorkspace?.id]);
+
+  const handleViewModeChange = (mode: "board" | "list") => {
+    setViewMode(mode);
+    if (activeWorkspace?.id) {
+      preferenceService.updateViewPreference(activeWorkspace.id, {
+        entityType: 'TASK',
+        viewType: mode.toUpperCase() as 'LIST' | 'BOARD',
+      }).catch(() => {});
+    }
+  };
+
+  // Fetch dynamic tasks from NestJS
+  const fetchTasks = useCallback(async () => {
+    if (!activeWorkspace?.id) return;
+    setLoading(true);
+    try {
+      const res = await taskService.getTasks(activeWorkspace.id, {
+        search: searchQuery.trim() || undefined,
+      });
+      const items = res.data || res || [];
+
+      if (Array.isArray(items) && items.length > 0) {
+        const todoTasks: Task[] = [];
+        const doingTasks: Task[] = [];
+        const completedTasks: Task[] = [];
+        const onHoldTasks: Task[] = [];
+
+        items.forEach((item: any) => {
+          const formatted: Task = {
+            id: item.id,
+            title: item.title,
+            assignee: { name: item.assignee?.user?.fullName || item.assignee?.fullName || "Admin" },
+            dueDate: item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : "29 Jul",
+            priority: item.priority ? item.priority.charAt(0) + item.priority.slice(1).toLowerCase() : "Medium",
+            tags: item.labels?.map((l: any) => l.name) || [item.type || "Deployment"],
+          };
+
+          const st = (item.status || "TODO").toUpperCase();
+          if (st === "DOING" || st === "IN_PROGRESS") {
+            doingTasks.push(formatted);
+          } else if (st === "COMPLETED" || st === "DONE") {
+            completedTasks.push(formatted);
+          } else if (st === "ON_HOLD") {
+            onHoldTasks.push(formatted);
+          } else {
+            todoTasks.push(formatted);
+          }
+        });
+
+        setColumns([
+          { id: "todo", title: "To Do", tasks: todoTasks },
+          { id: "doing", title: "Doing", tasks: doingTasks },
+          { id: "completed", title: "Completed", tasks: completedTasks },
+          { id: "on-hold", title: "On Hold", tasks: onHoldTasks },
+        ]);
+      }
+    } catch (e) {
+      console.error("Failed to fetch tasks from server", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeWorkspace?.id, searchQuery]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width:767px)");
-
-    const handleResize = () => {
-      setSidebarOpen(!mediaQuery.matches);
-    };
-
+    const handleResize = () => setSidebarOpen(!mediaQuery.matches);
     handleResize();
-
     mediaQuery.addEventListener("change", handleResize);
-
-    return () => {
-      mediaQuery.removeEventListener("change", handleResize);
-    };
+    return () => mediaQuery.removeEventListener("change", handleResize);
   }, []);
 
   const handleToggleField = (field: keyof VisibleFields) => {
-    setVisibleFields((prev) => ({
-      ...prev,
-      [field]: !prev[field],
-    }));
+    setVisibleFields((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
-  // Opens the Add Task form for the target column
   const handleAddTask = (columnId?: string) => {
     const targetId = columnId || "todo";
     setActiveColumnId(targetId);
@@ -184,48 +209,63 @@ export default function Dashboard() {
 
   const handleCloseModal = () => {
     setIsAddTaskOpen(false);
-    setActiveColumnId(null);
     setNewTaskTitle("");
   };
 
-  // Submits the new task and appends it to the target column's tasks array
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTaskTitle.trim() || !activeColumnId) return;
+    if (!newTaskTitle.trim()) return;
+
+    const targetColId = activeColumnId || "todo";
+    const statusMap: Record<string, string> = {
+      "todo": "TODO",
+      "doing": "DOING",
+      "completed": "COMPLETED",
+      "on-hold": "ON_HOLD",
+    };
 
     const newTask: Task = {
-      id: Date.now().toString(),
+      id: `t-${Date.now()}`,
       title: newTaskTitle.trim(),
       assignee: { name: newTaskAssignee || "Admin" },
       dueDate: newTaskDueDate || "29 Jul",
+      priority: "Medium",
       tags: newTaskTag ? [newTaskTag] : ["Deployment"],
     };
 
+    // Optimistically update local UI immediately
     setColumns((prevColumns) =>
       prevColumns.map((col) =>
-        col.id === activeColumnId
+        col.id === targetColId
           ? { ...col, tasks: [...col.tasks, newTask] }
           : col
       )
     );
 
+    // Save to NestJS backend if activeWorkspace exists
+    if (activeWorkspace?.id) {
+      try {
+        await taskService.createTask(activeWorkspace.id, {
+          title: newTaskTitle.trim(),
+          status: statusMap[targetColId] || "TODO",
+          priority: "MEDIUM",
+        });
+        fetchTasks();
+      } catch (err) {
+        console.error("Task saved locally, server sync error:", err);
+      }
+    }
+
     handleCloseModal();
   };
-
-  const handleMoreOptions = (columnId?: string) => {
-    console.log(`More options requested for column: ${columnId}`);
-  };
-
-  const activeColumn = columns.find((c) => c.id === activeColumnId);
 
   return (
     <div className="min-h-screen flex bg-white dark:bg-[#0A0A0A] transition-colors duration-200">
       {/* Sidebar Container */}
       <div
-        className={`transition-all duration-300 ease-in-out relative z-40 ${isSidebarOpen
-          ? "w-[13.5rem] overflow-visible"
-          : "w-0 overflow-hidden"
-          }`}
+        className={`transition-all duration-300 ease-in-out relative z-40 ${
+          isSidebarOpen ? "w-[13.5rem] overflow-visible" : "w-0 overflow-hidden"
+        }`}
       >
         <Sidebar />
       </div>
@@ -241,7 +281,7 @@ export default function Dashboard() {
             {/* Tasks Header Component */}
             <TaskHeader
               viewMode={viewMode}
-              onViewModeChange={setViewMode}
+              onViewModeChange={handleViewModeChange}
               visibleFields={visibleFields}
               onToggleField={handleToggleField}
               onAddTask={() => handleAddTask("todo")}
@@ -249,10 +289,13 @@ export default function Dashboard() {
               onSearchChange={setSearchQuery}
             />
 
-            {/* Dynamic Layout: Grid for Board view Mode, Vertical Accordion Stack for List view Mode */}
-            {viewMode === "board" ? (
+            {loading ? (
+              <div className="w-full h-64 flex items-center justify-center text-xs text-neutral-400">
+                Loading tasks...
+              </div>
+            ) : viewMode === "board" ? (
               <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
-                {filteredColumns.map((col) => (
+                {columns.map((col) => (
                   <KanbanColumn
                     key={col.id}
                     id={col.id}
@@ -261,13 +304,13 @@ export default function Dashboard() {
                     visibleFields={visibleFields}
                     isListMode={false}
                     onAddTask={() => handleAddTask(col.id)}
-                    onMoreOptions={() => handleMoreOptions(col.id)}
+                    onMoreOptions={() => {}}
                   />
                 ))}
               </div>
             ) : (
               <div className="w-full flex flex-col gap-3">
-                {filteredColumns.map((col) => (
+                {columns.map((col) => (
                   <KanbanColumn
                     key={col.id}
                     id={col.id}
@@ -276,7 +319,7 @@ export default function Dashboard() {
                     visibleFields={visibleFields}
                     isListMode={true}
                     onAddTask={() => handleAddTask(col.id)}
-                    onMoreOptions={() => handleMoreOptions(col.id)}
+                    onMoreOptions={() => {}}
                   />
                 ))}
               </div>
@@ -294,11 +337,11 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between border-b border-[#E5E5E5] dark:border-[#2A2A2A] pb-3">
               <h3 className="text-sm font-semibold text-[#171717] dark:text-[#F5F5F5]">
-                Add Task to "{activeColumn?.title}"
+                Add Task to "{columns.find((c) => c.id === (activeColumnId || "todo"))?.title || "To Do"}"
               </h3>
               <button
                 onClick={handleCloseModal}
-                className="text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5] transition-colors p-1"
+                className="text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5] transition-colors p-1 cursor-pointer"
                 type="button"
                 aria-label="Close modal"
               >

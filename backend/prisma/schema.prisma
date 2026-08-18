@@ -1,0 +1,275 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ------------------------------------------------------
+// Models
+// ------------------------------------------------------
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  fullName     String?
+  username     String    @unique
+  title        String?
+  avatarUrl    String?
+  theme        String    @default("dark")
+  colorMode    String    @default("emerald")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
+
+  // Relations
+  memberships        WorkspaceMember[]
+  createdProjects    Project[]            @relation("ProjectCreator")
+  reportedProjects   Project[]            @relation("ProjectReporter")
+  createdTasks       Task[]               @relation("TaskCreator")
+  reportedTasks      Task[]               @relation("TaskReporter")
+  projectMemberships ProjectMember[]
+  taskMemberships    TaskMember[]
+  viewPreferences    UserViewPreference[]
+  activityLogs       ActivityLog[]
+
+  @@map("users")
+}
+
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  members         WorkspaceMember[]
+  projects        Project[]
+  tasks           Task[]
+  teams           Team[]
+  labels          Label[]
+  viewPreferences UserViewPreference[]
+  activityLogs    ActivityLog[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String   @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        String   @default("MEMBER")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+model Team {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects  Project[]
+  tasks     Task[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("teams")
+}
+
+model Label {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  color       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects  ProjectLabel[]
+  tasks     TaskLabel[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("labels")
+}
+
+model Project {
+  id          String    @id @default(uuid())
+  workspaceId String
+  name        String
+  description String?
+  status      String    @default("PLANNED")
+  priority    String    @default("NONE")
+  dueDate     DateTime?
+  position    Float     @default(0)
+  reporterId  String?
+  teamId      String?
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User            @relation("ProjectCreator", fields: [createdById], references: [id])
+  reporter  User?           @relation("ProjectReporter", fields: [reporterId], references: [id])
+  team      Team?           @relation(fields: [teamId], references: [id])
+  members   ProjectMember[]
+  labels    ProjectLabel[]
+  tasks     Task[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@index([workspaceId, priority])
+  @@index([workspaceId, dueDate])
+  @@map("projects")
+}
+
+model ProjectMember {
+  projectId  String
+  userId     String
+  assignedAt DateTime @default(now())
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model ProjectLabel {
+  projectId String
+  labelId   String
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label   Label   @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, labelId])
+  @@index([projectId])
+  @@index([labelId])
+  @@map("project_labels")
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  workspaceId String
+  projectId   String?
+  title       String
+  description String?
+  status      String    @default("TODO")
+  priority    String    @default("NONE")
+  dueDate     DateTime?
+  position    Float     @default(0)
+  reporterId  String?
+  teamId      String?
+  createdById String
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdBy User         @relation("TaskCreator", fields: [createdById], references: [id])
+  reporter  User?        @relation("TaskReporter", fields: [reporterId], references: [id])
+  team      Team?        @relation(fields: [teamId], references: [id])
+  members   TaskMember[]
+  labels    TaskLabel[]
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([workspaceId, status])
+  @@index([workspaceId, priority])
+  @@map("tasks")
+}
+
+model TaskMember {
+  taskId     String
+  userId     String
+  assignedAt DateTime @default(now())
+
+  // Relations
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+  @@map("task_members")
+}
+
+model TaskLabel {
+  taskId  String
+  labelId String
+
+  // Relations
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, labelId])
+  @@index([taskId])
+  @@index([labelId])
+  @@map("task_labels")
+}
+
+model UserViewPreference {
+  id            String   @id @default(uuid())
+  userId        String
+  workspaceId   String
+  entityType    String   // "PROJECT" | "TASK"
+  viewType      String   @default("LIST") // "LIST" | "BOARD"
+  visibleFields String   @default("[]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId, entityType])
+  @@map("user_view_preferences")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  workspaceId String
+  actorId     String
+  entityType  String
+  entityId    String
+  action      String
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor     User      @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([entityType, entityId])
+  @@map("activity_logs")
+}

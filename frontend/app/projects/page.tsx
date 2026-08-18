@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import TaskHeader from "@/components/taskHeader";
@@ -8,35 +8,27 @@ import ActiveFilterChips from "@/components/projects/ActiveFilterChips";
 import ProjectListView from "@/components/projects/ProjectListView";
 import ProjectBoardView from "@/components/projects/ProjectBoardView";
 import AddProjectModal from "@/components/projects/AddProjectModal";
-import { INITIAL_PROJECTS, FILTER_CONFIGS } from "@/components/projects/data";
+import { FILTER_CONFIGS } from "@/components/projects/data";
 import {
   Project,
   ActiveFilters,
   VisibleFields,
   StatusType,
 } from "@/components/projects/types";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { projectService } from "@/services/project.service";
+import { preferenceService } from "@/services/preference.service";
 
 export default function ProjectsPage() {
+  const { activeWorkspace } = useWorkspace();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
 
-  // View Mode: 'list' or 'board', persisted in localStorage
+  // View Mode: 'list' or 'board'
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
 
-  // Load view mode preference from localStorage on mount
-  useEffect(() => {
-    const savedMode = localStorage.getItem("projects_view_mode");
-    if (savedMode === "list" || savedMode === "board") {
-      setViewMode(savedMode);
-    }
-  }, []);
-
-  const handleViewModeChange = (mode: "list" | "board") => {
-    setViewMode(mode);
-    localStorage.setItem("projects_view_mode", mode);
-  };
-
   // Projects state
-  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Search query state
   const [searchQuery, setSearchQuery] = useState("");
@@ -60,7 +52,88 @@ export default function ProjectsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addModalInitialStatus, setAddModalInitialStatus] = useState<StatusType>("Planned");
 
-  // Handle responsive sidebar on window resize
+  // Load view mode and column preferences from server/localStorage on mount or workspace change
+  useEffect(() => {
+    if (!activeWorkspace?.id) return;
+
+    // Load preferences
+    preferenceService.getViewPreference(activeWorkspace.id, 'PROJECT')
+      .then((pref) => {
+        if (pref) {
+          if (pref.viewType === 'LIST' || pref.viewType === 'BOARD') {
+            setViewMode(pref.viewType.toLowerCase() as "list" | "board");
+          }
+          if (pref.visibleFields && Array.isArray(pref.visibleFields)) {
+            const fieldObj: Partial<VisibleFields> = {};
+            pref.visibleFields.forEach((f: string) => {
+              fieldObj[f as keyof VisibleFields] = true;
+            });
+            setVisibleFields((prev) => ({ ...prev, ...fieldObj }));
+          }
+        }
+      })
+      .catch(() => {});
+  }, [activeWorkspace?.id]);
+
+  const handleViewModeChange = (mode: "list" | "board") => {
+    setViewMode(mode);
+    if (activeWorkspace?.id) {
+      preferenceService.updateViewPreference(activeWorkspace.id, {
+        entityType: 'PROJECT',
+        viewType: mode.toUpperCase() as 'LIST' | 'BOARD',
+      }).catch(() => {});
+    }
+  };
+
+  // Fetch dynamic projects from NestJS backend
+  const fetchProjects = useCallback(async () => {
+    if (!activeWorkspace?.id) {
+      setProjects([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const queryParams: any = {
+        search: searchQuery.trim() || undefined,
+        status: activeFilters.status ? activeFilters.status.toUpperCase().replace(/\s+/g, '_') : undefined,
+        priority: activeFilters.priority ? activeFilters.priority.toUpperCase().replace(/\s+/g, '_') : undefined,
+      };
+
+      const res = await projectService.getProjects(activeWorkspace.id, queryParams);
+      const items = res.data || res || [];
+      
+      // Transform server objects into UI Project format
+      const formatted: Project[] = items.map((item: any) => ({
+        id: item.id,
+        name: item.name || "Untitled Project",
+        priority: item.priority ? (item.priority.charAt(0) + item.priority.slice(1).toLowerCase().replace('_', ' ')) : "Medium",
+        status: item.status === "IN_PROGRESS" ? "In Progress" : (item.status ? (item.status.charAt(0) + item.status.slice(1).toLowerCase()) : "Planned"),
+        members: item.members?.map((m: any) => ({
+          id: m.user?.id || m.id,
+          name: m.user?.fullName || m.fullName || "Member",
+          initials: (m.user?.fullName || m.fullName || "M").split(" ").map((n: string) => n[0]).join("").toUpperCase(),
+          avatar: m.user?.avatarUrl || m.avatarUrl || "/Pasted image.png",
+        })) || [{ id: "m1", name: "User", initials: "U", avatar: "/Pasted image.png" }],
+        dueDate: item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "No Due Date",
+        teams: item.team ? [item.team.name] : (item.teams?.map((t: any) => t.name) || ["Engineering"]),
+        labels: item.labels?.map((l: any) => l.name) || ["Feature"],
+        reporter: item.reporter?.fullName || "Admin",
+      }));
+
+      setProjects(formatted);
+    } catch (e) {
+      console.error("Failed to fetch projects from backend", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeWorkspace?.id, searchQuery, activeFilters]);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  // Handle responsive sidebar
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 767px)");
     const handleResize = () => {
@@ -72,10 +145,17 @@ export default function ProjectsPage() {
   }, []);
 
   const handleToggleField = (field: keyof VisibleFields) => {
-    setVisibleFields((prev) => ({
-      ...prev,
-      [field]: !prev[field],
-    }));
+    setVisibleFields((prev) => {
+      const updated = { ...prev, [field]: !prev[field] };
+      if (activeWorkspace?.id) {
+        const visibleArr = Object.keys(updated).filter((k) => updated[k as keyof VisibleFields]);
+        preferenceService.updateViewPreference(activeWorkspace.id, {
+          entityType: 'PROJECT',
+          visibleFields: visibleArr,
+        }).catch(() => {});
+      }
+      return updated;
+    });
   };
 
   const handleSelectFilter = (key: string, value: string | null) => {
@@ -107,62 +187,45 @@ export default function ProjectsPage() {
     setIsAddModalOpen(true);
   };
 
-  const handleSaveProject = (newProject: Project) => {
-    setProjects((prev) => [newProject, ...prev]);
+  const handleSaveProject = async (newProjData: Project) => {
+    if (!activeWorkspace?.id) return;
+    try {
+      const statusMap: Record<string, string> = {
+        "Planned": "PLANNED",
+        "In Progress": "IN_PROGRESS",
+        "Completed": "COMPLETED",
+      };
+      const priorityMap: Record<string, string> = {
+        "Urgent": "URGENT",
+        "High": "HIGH",
+        "Medium": "MEDIUM",
+        "Low": "LOW",
+        "No Priority": "NONE",
+      };
+
+      await projectService.createProject(activeWorkspace.id, {
+        name: newProjData.name,
+        description: "",
+        status: statusMap[newProjData.status] || "PLANNED",
+        priority: priorityMap[newProjData.priority] || "MEDIUM",
+        dueDate: newProjData.dueDate !== "No Due Date" ? new Date().toISOString() : undefined,
+      });
+
+      await fetchProjects();
+    } catch (e) {
+      console.error("Failed to create project on backend", e);
+    }
   };
 
-  const handleDeleteProject = (id: string) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
+  const handleDeleteProject = async (id: string) => {
+    if (!activeWorkspace?.id) return;
+    try {
+      await projectService.deleteProject(activeWorkspace.id, id);
+      setProjects((prev) => prev.filter((p) => p.id !== id));
+    } catch (e) {
+      console.error("Failed to delete project", e);
+    }
   };
-
-  // Dynamic project filtering logic matching search and active filters
-  const filteredProjects = projects.filter((project) => {
-    // 1. Match Search Query
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      const matchName = project.name.toLowerCase().includes(q);
-      const matchPriority = project.priority.toLowerCase().includes(q);
-      const matchStatus = project.status.toLowerCase().includes(q);
-      const matchDueDate = project.dueDate.toLowerCase().includes(q);
-      const matchReporter = project.reporter.toLowerCase().includes(q);
-      const matchTeams = project.teams.some((t) => t.toLowerCase().includes(q));
-      const matchLabels = project.labels.some((l) => l.toLowerCase().includes(q));
-      const matchMembers = project.members.some((m) =>
-        m.name.toLowerCase().includes(q)
-      );
-
-      if (
-        !matchName &&
-        !matchPriority &&
-        !matchStatus &&
-        !matchDueDate &&
-        !matchReporter &&
-        !matchTeams &&
-        !matchLabels &&
-        !matchMembers
-      ) {
-        return false;
-      }
-    }
-
-    // 2. Match Active Filters
-    for (const [key, value] of Object.entries(activeFilters)) {
-      if (!value || value.startsWith("All ")) continue;
-
-      if (key === "status" && project.status !== value) return false;
-      if (key === "priority" && project.priority !== value) return false;
-      if (key === "reporter" && project.reporter !== value) return false;
-      if (key === "teams" && !project.teams.includes(value)) return false;
-      if (key === "labels" && !project.labels.includes(value)) return false;
-      if (key === "members" && !project.members.some((m) => m.name === value))
-        return false;
-      if (key === "dueDate") {
-        if (value === "No Due Date" && project.dueDate) return false;
-      }
-    }
-
-    return true;
-  });
 
   return (
     <div className="min-h-screen flex bg-white dark:bg-[#0A0A0A] transition-colors duration-200">
@@ -208,16 +271,20 @@ export default function ProjectsPage() {
             />
 
             {/* View Content: List View or Board View */}
-            {viewMode === "list" ? (
+            {loading ? (
+              <div className="w-full h-64 flex items-center justify-center text-xs text-neutral-400">
+                Loading projects from server...
+              </div>
+            ) : viewMode === "list" ? (
               <ProjectListView
-                projects={filteredProjects}
+                projects={projects}
                 visibleFields={visibleFields}
                 onAddProject={() => handleOpenAddModal("Planned")}
                 onDeleteProject={handleDeleteProject}
               />
             ) : (
               <ProjectBoardView
-                projects={filteredProjects}
+                projects={projects}
                 visibleFields={visibleFields}
                 onAddProject={handleOpenAddModal}
                 onDeleteProject={handleDeleteProject}

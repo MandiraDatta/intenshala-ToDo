@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { userService } from "@/services/user.service";
 
 export type Theme = "light" | "dark";
 export type ColorMode = "amber" | "blue" | "pink" | "rose" | "emerald" | "black";
@@ -35,7 +36,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
   const [colorMode, setColorModeState] = useState<ColorMode>("black");
 
-  // Load saved theme and color mode on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem("app_theme") as Theme;
     if (savedTheme === "light" || savedTheme === "dark") {
@@ -58,6 +58,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         document.documentElement.classList.remove("dark");
       }
     }
+    // Sync preference with backend non-blocking
+    userService.updatePreferences({ theme: newTheme }).catch(() => {});
   };
 
   const setColorMode = (newColorMode: ColorMode) => {
@@ -69,6 +71,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         document.documentElement.style.setProperty("--primary-accent", modeConfig.hex);
       }
     }
+    // Sync preference with backend non-blocking
+    userService.updatePreferences({ colorMode: newColorMode }).catch(() => {});
   };
 
   useEffect(() => {
