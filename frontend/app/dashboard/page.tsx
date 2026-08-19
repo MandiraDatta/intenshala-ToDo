@@ -36,9 +36,9 @@ export default function Dashboard() {
 
   // Form input states
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskAssignee, setNewTaskAssignee] = useState("Admin");
-  const [newTaskDueDate, setNewTaskDueDate] = useState("29 Jul");
-  const [newTaskTag, setNewTaskTag] = useState("Deployment");
+  const [newTaskAssignee, setNewTaskAssignee] = useState("");
+  const [newTaskDueDate, setNewTaskDueDate] = useState("");
+  const [newTaskTag, setNewTaskTag] = useState("");
   const [loading, setLoading] = useState(true);
 
   // Dynamic column state initialized to empty tasks (0 mock data)
@@ -98,25 +98,22 @@ export default function Dashboard() {
       const onHoldTasks: Task[] = [];
 
       (Array.isArray(items) ? items : []).forEach((item: any) => {
-        const formatted: Task = {
+        const formattedTask: Task = {
           id: item.id,
           title: item.title,
-          assignee: { name: item.assignee?.user?.fullName || item.assignee?.fullName || "Admin" },
-          dueDate: item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : "No Due Date",
-          priority: item.priority ? item.priority.charAt(0) + item.priority.slice(1).toLowerCase() : "Medium",
-          tags: item.labels?.map((l: any) => l.name) || [item.type || "General"],
+          status: item.status || "TODO",
+          priority: item.priority || "MEDIUM",
+          dueDate: item.dueDate ? new Date(item.dueDate).toLocaleDateString("en-US", { day: "numeric", month: "short" }) : undefined,
+          assignee: item.members?.[0]?.user?.fullName || item.createdBy?.fullName,
+          tags: item.labels?.map((l: any) => l.label?.name || l.name) || [],
         };
 
         const st = (item.status || "TODO").toUpperCase();
-        if (st === "DOING" || st === "IN_PROGRESS") {
-          doingTasks.push(formatted);
-        } else if (st === "COMPLETED" || st === "DONE") {
-          completedTasks.push(formatted);
-        } else if (st === "ON_HOLD") {
-          onHoldTasks.push(formatted);
-        } else {
-          todoTasks.push(formatted);
-        }
+        if (st === "TODO") todoTasks.push(formattedTask);
+        else if (st === "DOING" || st === "IN_PROGRESS") doingTasks.push(formattedTask);
+        else if (st === "COMPLETED" || st === "DONE") completedTasks.push(formattedTask);
+        else if (st === "ON_HOLD") onHoldTasks.push(formattedTask);
+        else todoTasks.push(formattedTask);
       });
 
       setColumns([
@@ -125,14 +122,8 @@ export default function Dashboard() {
         { id: "completed", title: "Completed", tasks: completedTasks },
         { id: "on-hold", title: "On Hold", tasks: onHoldTasks },
       ]);
-    } catch (e) {
-      console.error("Failed to fetch tasks from server", e);
-      setColumns([
-        { id: "todo", title: "To Do", tasks: [] },
-        { id: "doing", title: "Doing", tasks: [] },
-        { id: "completed", title: "Completed", tasks: [] },
-        { id: "on-hold", title: "On Hold", tasks: [] },
-      ]);
+    } catch (err) {
+      console.error("Failed to fetch tasks from backend:", err);
     } finally {
       setLoading(false);
     }
@@ -163,11 +154,14 @@ export default function Dashboard() {
   const handleCloseModal = () => {
     setIsAddTaskOpen(false);
     setNewTaskTitle("");
+    setNewTaskAssignee("");
+    setNewTaskDueDate("");
+    setNewTaskTag("");
   };
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTaskTitle.trim() || !activeWorkspace?.id) return;
+    if (!newTaskTitle.trim()) return;
 
     const targetColId = activeColumnId || "todo";
     const statusMap: Record<string, string> = {
@@ -177,16 +171,42 @@ export default function Dashboard() {
       "on-hold": "ON_HOLD",
     };
 
-    try {
-      await taskService.createTask(activeWorkspace.id, {
-        title: newTaskTitle.trim(),
-        status: statusMap[targetColId] || "TODO",
-        priority: "MEDIUM",
-      });
-      await fetchTasks();
-      handleCloseModal();
-    } catch (err) {
-      console.error("Failed to create task on backend:", err);
+    const formattedDueDateStr = newTaskDueDate
+      ? new Date(newTaskDueDate).toLocaleDateString("en-US", { day: "numeric", month: "short" })
+      : undefined;
+
+    // Optimistically create task locally so user gets instant visual feedback
+    const tempId = `temp-${Date.now()}`;
+    const newTaskObj: Task = {
+      id: tempId,
+      title: newTaskTitle.trim(),
+      status: statusMap[targetColId] || "TODO",
+      priority: "MEDIUM",
+      dueDate: formattedDueDateStr,
+      assignee: newTaskAssignee.trim() || undefined,
+      tags: newTaskTag.trim() ? [newTaskTag.trim()] : [],
+    };
+
+    setColumns((prevCols) =>
+      prevCols.map((col) =>
+        col.id === targetColId ? { ...col, tasks: [...col.tasks, newTaskObj] } : col
+      )
+    );
+
+    handleCloseModal();
+
+    if (activeWorkspace?.id) {
+      try {
+        await taskService.createTask(activeWorkspace.id, {
+          title: newTaskTitle.trim(),
+          status: statusMap[targetColId] || "TODO",
+          priority: "MEDIUM",
+          dueDate: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
+        });
+        await fetchTasks();
+      } catch (err) {
+        console.error("Failed to create task on backend:", err);
+      }
     }
   };
 
@@ -345,7 +365,7 @@ export default function Dashboard() {
                     type="text"
                     value={newTaskAssignee}
                     onChange={(e) => setNewTaskAssignee(e.target.value)}
-                    placeholder="Admin"
+                    placeholder="Enter assignee name..."
                     className="w-full px-3 py-2 text-xs border border-[#E5E5E5] dark:border-[#2A2A2A] bg-white dark:bg-[#111111] text-[#171717] dark:text-[#F5F5F5] placeholder:text-[#A3A3A3] dark:placeholder:text-[#737373] rounded focus:outline-none focus:border-[#171717] dark:focus:border-[#A3A3A3]"
                   />
                 </div>
@@ -353,11 +373,10 @@ export default function Dashboard() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-[#171717] dark:text-[#F5F5F5]">Due Date</label>
                   <input
-                    type="text"
+                    type="date"
                     value={newTaskDueDate}
                     onChange={(e) => setNewTaskDueDate(e.target.value)}
-                    placeholder="29 Jul"
-                    className="w-full px-3 py-2 text-xs border border-[#E5E5E5] dark:border-[#2A2A2A] bg-white dark:bg-[#111111] text-[#171717] dark:text-[#F5F5F5] placeholder:text-[#A3A3A3] dark:placeholder:text-[#737373] rounded focus:outline-none focus:border-[#171717] dark:focus:border-[#A3A3A3]"
+                    className="w-full px-3 py-2 text-xs border border-[#E5E5E5] dark:border-[#2A2A2A] bg-white dark:bg-[#111111] text-[#171717] dark:text-[#F5F5F5] placeholder:text-[#A3A3A3] dark:placeholder:text-[#737373] rounded focus:outline-none focus:border-[#171717] dark:focus:border-[#A3A3A3] cursor-pointer"
                   />
                 </div>
               </div>
@@ -368,7 +387,7 @@ export default function Dashboard() {
                   type="text"
                   value={newTaskTag}
                   onChange={(e) => setNewTaskTag(e.target.value)}
-                  placeholder="Deployment"
+                  placeholder="Enter tag (e.g. Deployment)..."
                   className="w-full px-3 py-2 text-xs border border-[#E5E5E5] dark:border-[#2A2A2A] bg-white dark:bg-[#111111] text-[#171717] dark:text-[#F5F5F5] placeholder:text-[#A3A3A3] dark:placeholder:text-[#737373] rounded focus:outline-none focus:border-[#171717] dark:focus:border-[#A3A3A3]"
                 />
               </div>

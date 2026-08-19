@@ -9,7 +9,7 @@ export interface TaskCardProps {
     id: string;
     title: string;
     priority?: string;
-    assignee?: { name: string; avatar?: string };
+    assignee?: string | { name: string; avatar?: string };
     dueDate?: string;
     tags?: string[];
   };
@@ -31,14 +31,14 @@ export default function TaskCard({
   onMoreOptions,
   className = "",
 }: TaskCardProps) {
-  const assigneeName = task.assignee?.name || "Admin";
-  const dueDate = task.dueDate || "29 Jul";
-  const priority = task.priority || "High";
-  const tags = task.tags || ["Deployment", "Deployment"];
+  const assigneeName = typeof task.assignee === "string" ? task.assignee : task.assignee?.name;
+  const dueDate = task.dueDate;
+  const priority = task.priority || "Medium";
+  const tags = task.tags || [];
 
   const { priority: showPriority, members: showMembers, dueDate: showDueDate, labels: showLabels } = visibleFields;
 
-  const showMiddleRow = showMembers || showPriority || showDueDate;
+  const showMiddleRow = (showMembers && !!assigneeName) || showPriority || (showDueDate && !!dueDate);
 
   return (
     <Link
@@ -68,7 +68,7 @@ export default function TaskCard({
       {showMiddleRow && (
         <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
           {/* Members / Assignee */}
-          {showMembers && (
+          {showMembers && assigneeName && (
             <div className="flex items-center gap-1.5 min-w-0">
               <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-[9px] font-bold text-white shadow-xs shrink-0">
                 {assigneeName.charAt(0)}
@@ -103,28 +103,26 @@ export default function TaskCard({
             )}
 
             {/* Due Date Pill */}
-            {showDueDate && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FEF2F2] dark:bg-rose-950/40 border border-transparent dark:border-rose-900/50 text-[#EF4444] dark:text-rose-400 shrink-0">
-                <Calendar size={11} className="text-[#EF4444] dark:text-rose-400" />
-                <span className="font-sans text-[10px] font-medium leading-none">
-                  {dueDate}
-                </span>
+            {showDueDate && dueDate && (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#F5F5F5] dark:bg-[#262626] text-[#737373] dark:text-[#A3A3A3]">
+                <Calendar size={10} />
+                <span>{dueDate}</span>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Bottom Row: Labels / Tags */}
-      {showLabels && (
-        <div className="flex items-center gap-1.5 flex-wrap">
+      {/* Bottom Row: Tags */}
+      {showLabels && tags.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap pt-1">
           {tags.map((tag, idx) => (
             <span
-              key={idx}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#F5F5F5] dark:bg-[#262626] border border-transparent dark:border-[#2A2A2A] text-[#525252] dark:text-[#A3A3A3] font-sans text-[10px] font-medium max-w-full truncate"
+              key={`${tag}-${idx}`}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#F5F5F5] dark:bg-[#262626] text-[#737373] dark:text-[#A3A3A3] border border-[#E5E5E5] dark:border-[#2A2A2A]"
             >
-              <Tag size={10} className="text-[#737373] dark:text-[#A3A3A3] shrink-0" />
-              <span className="truncate">{tag}</span>
+              <Tag size={9} />
+              {tag}
             </span>
           ))}
         </div>

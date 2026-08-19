@@ -9,9 +9,10 @@ import { VisibleFields } from "./taskHeader";
 export interface Task {
   id: string;
   title: string;
-  assignee?: { name: string; avatar?: string };
+  assignee?: { name: string; avatar?: string } | string;
   dueDate?: string;
   priority?: string;
+  status?: string;
   tags?: string[];
 }
 
@@ -148,9 +149,9 @@ export default function KanbanColumn({
                 </div>
               ) : (
                 tasks.map((task, index) => {
-                  const assigneeName = task.assignee?.name || "Admin";
-                  const dueDate = task.dueDate || "12 Sep 2026";
-                  const priority = task.priority || "High";
+                  const assigneeName = typeof task.assignee === "string" ? task.assignee : task.assignee?.name || "";
+                  const dueDate = task.dueDate || "";
+                  const priority = task.priority || "Medium";
 
                   return (
                     <div
