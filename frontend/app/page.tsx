@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { IconBrandPrisma } from "@tabler/icons-react";
 import { RiGoogleFill } from "@remixicon/react";
@@ -20,34 +20,53 @@ export default function Home() {
   const [isRegister, setIsRegister] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Auto-redirect if user is already authenticated
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (token) {
+      router.push("/dashboard");
+    }
+  }, [router]);
+
   const handleGuestLogin = async () => {
     setIsLoading("guest");
     setErrorMsg("");
     try {
-      // Register or login guest user in NestJS backend
-      const guestEmail = `guest_${Math.floor(Math.random() * 10000)}@pyramid.app`;
-      const res = await authService.register({
+      let guestEmail = localStorage.getItem("pyramid_guest_email");
+      let guestPass = localStorage.getItem("pyramid_guest_pass") || "GuestPassword123!";
+
+      if (guestEmail) {
+        try {
+          await authService.login({ email: guestEmail, password: guestPass });
+          await refreshUser();
+          await refreshWorkspaces();
+          router.push("/dashboard");
+          return;
+        } catch {
+          // If saved guest login fails, create new guest below
+        }
+      }
+
+      // Create new persistent guest account
+      const randId = Math.floor(Math.random() * 100000);
+      guestEmail = `guest_${randId}@pyramid.app`;
+      guestPass = "GuestPassword123!";
+
+      await authService.register({
         email: guestEmail,
-        password: "GuestPassword123!",
+        password: guestPass,
         fullName: "Guest User",
-        username: `guest_${Math.floor(Math.random() * 10000)}`,
+        username: `guest_${randId}`,
       });
+
+      localStorage.setItem("pyramid_guest_email", guestEmail);
+      localStorage.setItem("pyramid_guest_pass", guestPass);
+
       await refreshUser();
       await refreshWorkspaces();
       router.push("/dashboard");
     } catch (e: any) {
-      // If registration fails, fallback to demo login
-      try {
-        await authService.login({
-          email: "demo@pyramid.app",
-          password: "DemoPassword123!",
-        });
-        await refreshUser();
-        await refreshWorkspaces();
-        router.push("/dashboard");
-      } catch (loginErr: any) {
-        setErrorMsg("Failed to initialize session with server.");
-      }
+      setErrorMsg("Failed to initialize session with server.");
     } finally {
       setIsLoading(null);
     }
@@ -57,22 +76,41 @@ export default function Home() {
     e.preventDefault();
     setIsLoading("email");
     setErrorMsg("");
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
     try {
       if (isRegister) {
         await authService.register({
-          email,
-          password,
-          fullName: fullName || email.split("@")[0],
-          username: email.split("@")[0],
+          email: cleanEmail,
+          password: cleanPassword,
+          fullName: fullName.trim() || cleanEmail.split("@")[0],
+          username: cleanEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "_") + "_" + Math.floor(Math.random() * 1000),
         });
       } else {
-        await authService.login({ email, password });
+        try {
+          await authService.login({ email: cleanEmail, password: cleanPassword });
+        } catch (loginErr: any) {
+          // If account does not exist yet, seamlessly register
+          if (loginErr?.response?.status === 401 || loginErr?.response?.status === 404) {
+            await authService.register({
+              email: cleanEmail,
+              password: cleanPassword,
+              fullName: cleanEmail.split("@")[0],
+              username: cleanEmail.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "_") + "_" + Math.floor(Math.random() * 1000),
+            });
+          } else {
+            throw loginErr;
+          }
+        }
       }
+
       await refreshUser();
       await refreshWorkspaces();
       router.push("/dashboard");
     } catch (err: any) {
-      setErrorMsg(err?.response?.data?.message || "Authentication failed. Check your credentials.");
+      setErrorMsg(err?.response?.data?.message || "Authentication failed. Please check your inputs.");
     } finally {
       setIsLoading(null);
     }

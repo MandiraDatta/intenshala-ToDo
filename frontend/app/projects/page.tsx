@@ -26,7 +26,7 @@ export default function ProjectsPage() {
   // View Mode: 'list' or 'board'
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
 
-  // Projects state
+  // Projects state initialized to empty array (0 mock data)
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,7 +36,7 @@ export default function ProjectsPage() {
   // Active filters state
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
 
-  // Visible fields state
+  // Visible fields state matching user design (Projects, Priority, Lead, Due Date, Actions)
   const [visibleFields, setVisibleFields] = useState<VisibleFields>({
     project: true,
     priority: true,
@@ -52,23 +52,14 @@ export default function ProjectsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addModalInitialStatus, setAddModalInitialStatus] = useState<StatusType>("Planned");
 
-  // Load view mode and column preferences from server/localStorage on mount or workspace change
+  // Load view mode and column preferences
   useEffect(() => {
     if (!activeWorkspace?.id) return;
-
-    // Load preferences
     preferenceService.getViewPreference(activeWorkspace.id, 'PROJECT')
       .then((pref) => {
         if (pref) {
           if (pref.viewType === 'LIST' || pref.viewType === 'BOARD') {
             setViewMode(pref.viewType.toLowerCase() as "list" | "board");
-          }
-          if (pref.visibleFields && Array.isArray(pref.visibleFields)) {
-            const fieldObj: Partial<VisibleFields> = {};
-            pref.visibleFields.forEach((f: string) => {
-              fieldObj[f as keyof VisibleFields] = true;
-            });
-            setVisibleFields((prev) => ({ ...prev, ...fieldObj }));
           }
         }
       })
@@ -85,7 +76,7 @@ export default function ProjectsPage() {
     }
   };
 
-  // Fetch dynamic projects from NestJS backend
+  // Fetch dynamic projects strictly from NestJS API
   const fetchProjects = useCallback(async () => {
     if (!activeWorkspace?.id) {
       setProjects([]);
@@ -103,12 +94,11 @@ export default function ProjectsPage() {
       const res = await projectService.getProjects(activeWorkspace.id, queryParams);
       const items = res.data || res || [];
       
-      // Transform server objects into UI Project format
-      const formatted: Project[] = items.map((item: any) => ({
+      const formatted: Project[] = (Array.isArray(items) ? items : []).map((item: any) => ({
         id: item.id,
         name: item.name || "Untitled Project",
-        priority: item.priority ? (item.priority.charAt(0) + item.priority.slice(1).toLowerCase().replace('_', ' ')) : "Medium",
-        status: item.status === "IN_PROGRESS" ? "In Progress" : (item.status ? (item.status.charAt(0) + item.status.slice(1).toLowerCase()) : "Planned"),
+        priority: item.priority ? (item.priority.charAt(0) + item.priority.slice(1).toLowerCase().replace('_', ' ')) as any : "Medium",
+        status: item.status === "IN_PROGRESS" ? "In Progress" : (item.status === "COMPLETED" ? "Completed" : "Planned"),
         members: item.members?.map((m: any) => ({
           id: m.user?.id || m.id,
           name: m.user?.fullName || m.fullName || "Member",
@@ -116,14 +106,15 @@ export default function ProjectsPage() {
           avatar: m.user?.avatarUrl || m.avatarUrl || "/Pasted image.png",
         })) || [{ id: "m1", name: "User", initials: "U", avatar: "/Pasted image.png" }],
         dueDate: item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "No Due Date",
-        teams: item.team ? [item.team.name] : (item.teams?.map((t: any) => t.name) || ["Engineering"]),
-        labels: item.labels?.map((l: any) => l.name) || ["Feature"],
+        teams: item.team ? [item.team.name] : (item.teams?.map((t: any) => t.name) || []),
+        labels: item.labels?.map((l: any) => l.name) || [],
         reporter: item.reporter?.fullName || "Admin",
       }));
 
       setProjects(formatted);
     } catch (e) {
       console.error("Failed to fetch projects from backend", e);
+      setProjects([]);
     } finally {
       setLoading(false);
     }
@@ -145,17 +136,7 @@ export default function ProjectsPage() {
   }, []);
 
   const handleToggleField = (field: keyof VisibleFields) => {
-    setVisibleFields((prev) => {
-      const updated = { ...prev, [field]: !prev[field] };
-      if (activeWorkspace?.id) {
-        const visibleArr = Object.keys(updated).filter((k) => updated[k as keyof VisibleFields]);
-        preferenceService.updateViewPreference(activeWorkspace.id, {
-          entityType: 'PROJECT',
-          visibleFields: visibleArr,
-        }).catch(() => {});
-      }
-      return updated;
-    });
+    setVisibleFields((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
   const handleSelectFilter = (key: string, value: string | null) => {
@@ -208,7 +189,6 @@ export default function ProjectsPage() {
         description: "",
         status: statusMap[newProjData.status] || "PLANNED",
         priority: priorityMap[newProjData.priority] || "MEDIUM",
-        dueDate: newProjData.dueDate !== "No Due Date" ? new Date().toISOString() : undefined,
       });
 
       await fetchProjects();
@@ -223,7 +203,30 @@ export default function ProjectsPage() {
       await projectService.deleteProject(activeWorkspace.id, id);
       setProjects((prev) => prev.filter((p) => p.id !== id));
     } catch (e) {
-      console.error("Failed to delete project", e);
+      console.error("Failed to delete project on backend", e);
+    }
+  };
+
+  const handleUpdateStatus = async (id: string, newStatus: StatusType) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p))
+    );
+
+    if (activeWorkspace?.id) {
+      try {
+        const statusMap: Record<string, string> = {
+          "Planned": "PLANNED",
+          "In Progress": "IN_PROGRESS",
+          "Completed": "COMPLETED",
+        };
+        await projectService.updateProjectStatus(
+          activeWorkspace.id,
+          id,
+          statusMap[newStatus] || "PLANNED"
+        );
+      } catch (e) {
+        console.error("Failed to sync project status update to server", e);
+      }
     }
   };
 
@@ -246,10 +249,10 @@ export default function ProjectsPage() {
         {/* Page Container */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
           <div className="h-full w-full flex flex-col gap-4">
-            {/* Header section with Search, Fields, Filter, View Switcher & Add Project */}
+            {/* Header section with Search, Fields, Filter, View Switcher & Add Task */}
             <TaskHeader
               title="Projects"
-              addLabel="Add Project"
+              addLabel="Add Task"
               viewMode={viewMode}
               onViewModeChange={handleViewModeChange}
               searchQuery={searchQuery}
@@ -272,8 +275,8 @@ export default function ProjectsPage() {
 
             {/* View Content: List View or Board View */}
             {loading ? (
-              <div className="w-full h-64 flex items-center justify-center text-xs text-neutral-400">
-                Loading projects from server...
+              <div className="w-full h-64 flex items-center justify-center text-xs text-neutral-400 font-medium">
+                Loading projects...
               </div>
             ) : viewMode === "list" ? (
               <ProjectListView
@@ -288,6 +291,7 @@ export default function ProjectsPage() {
                 visibleFields={visibleFields}
                 onAddProject={handleOpenAddModal}
                 onDeleteProject={handleDeleteProject}
+                onUpdateStatus={handleUpdateStatus}
               />
             )}
           </div>

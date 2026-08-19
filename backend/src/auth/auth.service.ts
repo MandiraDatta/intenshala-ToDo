@@ -44,7 +44,7 @@ export class AuthService {
       });
 
       // Create default personal workspace
-      const slug = `${usernameLower}-workspace`;
+      const slug = `${usernameLower}-workspace-${Date.now().toString().slice(-4)}`;
       const workspace = await tx.workspace.create({
         data: {
           name: `${dto.fullName || dto.username}'s Workspace`,

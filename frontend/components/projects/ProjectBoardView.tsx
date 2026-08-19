@@ -9,6 +9,7 @@ interface ProjectBoardViewProps {
   visibleFields: VisibleFields;
   onAddProject: (defaultStatus?: StatusType) => void;
   onDeleteProject?: (id: string) => void;
+  onUpdateStatus?: (id: string, newStatus: StatusType) => void;
 }
 
 export default function ProjectBoardView({
@@ -16,12 +17,25 @@ export default function ProjectBoardView({
   visibleFields,
   onAddProject,
   onDeleteProject,
+  onUpdateStatus,
 }: ProjectBoardViewProps) {
   const columns: { id: StatusType; title: string; color: string }[] = [
     { id: "Planned", title: "Planned", color: "fill-blue-500 text-blue-500" },
     { id: "In Progress", title: "In Progress", color: "fill-amber-500 text-amber-500" },
     { id: "Completed", title: "Completed", color: "fill-emerald-500 text-emerald-500" },
   ];
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, targetStatus: StatusType) => {
+    e.preventDefault();
+    const projectId = e.dataTransfer.getData("text/plain") || e.dataTransfer.getData("projectId");
+    if (projectId && onUpdateStatus) {
+      onUpdateStatus(projectId, targetStatus);
+    }
+  };
 
   return (
     <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
@@ -31,6 +45,8 @@ export default function ProjectBoardView({
         return (
           <div
             key={col.id}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, col.id)}
             className="flex flex-col bg-[#FAFAFA] dark:bg-[#111111] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl p-3 gap-3 min-h-[320px]"
           >
             {/* Column Header */}
@@ -67,6 +83,7 @@ export default function ProjectBoardView({
                     project={project}
                     visibleFields={visibleFields}
                     onDeleteProject={onDeleteProject}
+                    onUpdateStatus={onUpdateStatus}
                   />
                 ))
               )}

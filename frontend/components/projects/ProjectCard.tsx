@@ -13,12 +13,13 @@ import {
   Users,
   Trash2,
 } from "lucide-react";
-import { Project, VisibleFields } from "./types";
+import { Project, VisibleFields, StatusType } from "./types";
 
 interface ProjectCardProps {
   project: Project;
   visibleFields: VisibleFields;
   onDeleteProject?: (id: string) => void;
+  onUpdateStatus?: (id: string, newStatus: StatusType) => void;
 }
 
 export default function ProjectCard({
@@ -68,8 +69,19 @@ export default function ProjectCard({
     }
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.stopPropagation();
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", project.id);
+    e.dataTransfer.setData("projectId", project.id);
+  };
+
   return (
-    <div className="w-full bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl p-3.5 flex flex-col gap-3 shadow-2xs hover:shadow-md transition-shadow relative">
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      className="w-full bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl p-3.5 flex flex-col gap-3 shadow-2xs hover:shadow-md transition-shadow relative cursor-grab active:cursor-grabbing"
+    >
       {/* Header: Project Name & Actions Menu */}
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold text-xs text-[#171717] dark:text-[#F5F5F5] leading-snug">
@@ -79,7 +91,7 @@ export default function ProjectCard({
           <button
             type="button"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="p-1 text-[#737373] hover:text-[#171717] dark:text-[#A3A3A3] dark:hover:text-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded transition-colors"
+            className="p-1 text-[#737373] hover:text-[#171717] dark:text-[#A3A3A3] dark:hover:text-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded transition-colors cursor-pointer"
             title="More Options"
           >
             <MoreHorizontal size={14} />
@@ -148,29 +160,29 @@ export default function ProjectCard({
       {/* Teams & Labels Row */}
       {((visibleFields.teams && project.teams.length > 0) ||
         (visibleFields.labels && project.labels.length > 0)) && (
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {visibleFields.teams &&
-            project.teams.map((team) => (
-              <span
-                key={team}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#F5F5F5] dark:bg-[#262626] text-[10px] font-medium text-[#737373] dark:text-[#A3A3A3]"
-              >
-                <Users size={10} />
-                {team}
-              </span>
-            ))}
-          {visibleFields.labels &&
-            project.labels.map((label) => (
-              <span
-                key={label}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#2A2A2A] text-[10px] font-medium text-[#171717] dark:text-[#F5F5F5]"
-              >
-                <Tag size={10} className="text-[#737373] dark:text-[#A3A3A3]" />
-                {label}
-              </span>
-            ))}
-        </div>
-      )}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {visibleFields.teams &&
+              project.teams.map((team) => (
+                <span
+                  key={team}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#F5F5F5] dark:bg-[#262626] text-[10px] font-medium text-[#737373] dark:text-[#A3A3A3]"
+                >
+                  <Users size={10} />
+                  {team}
+                </span>
+              ))}
+            {visibleFields.labels &&
+              project.labels.map((label) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#2A2A2A] text-[10px] font-medium text-[#171717] dark:text-[#F5F5F5]"
+                >
+                  <Tag size={10} className="text-[#737373] dark:text-[#A3A3A3]" />
+                  {label}
+                </span>
+              ))}
+          </div>
+        )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ export enum TaskStatus {
   TODO = 'TODO',
   DOING = 'DOING',
   COMPLETED = 'COMPLETED',
+  ON_HOLD = 'ON_HOLD',
 }
 
 export enum Priority {
