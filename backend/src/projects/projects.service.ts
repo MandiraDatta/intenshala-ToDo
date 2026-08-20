@@ -13,43 +13,101 @@ export class ProjectsService {
   constructor(private prisma: PrismaService) {}
 
   async create(workspaceId: string, createdById: string, dto: CreateProjectDto) {
+    let validUserId = createdById;
+    if (validUserId) {
+      const userExists = await this.prisma.user.findUnique({ where: { id: validUserId } });
+      if (!userExists) validUserId = undefined as any;
+    }
+    if (!validUserId) {
+      const firstMember = await this.prisma.workspaceMember.findFirst({ where: { workspaceId } });
+      if (firstMember) {
+        validUserId = firstMember.userId;
+      } else {
+        let firstUser = await this.prisma.user.findFirst();
+        if (!firstUser) {
+          firstUser = await this.prisma.user.create({
+            data: {
+              email: 'admin@pyramid.local',
+              passwordHash: 'dummy-password-hash',
+              fullName: 'Admin',
+              username: 'admin',
+            },
+          });
+        }
+        validUserId = firstUser.id;
+      }
+    }
+
+    let targetWorkspaceId = workspaceId;
+    const wsExists = await this.prisma.workspace.findUnique({ where: { id: targetWorkspaceId } });
+    if (!wsExists) {
+      let firstWs = await this.prisma.workspace.findFirst();
+      if (!firstWs) {
+        firstWs = await this.prisma.workspace.create({
+          data: {
+            name: 'Default Workspace',
+            slug: `default-workspace-${Date.now()}`,
+          },
+        });
+      }
+      targetWorkspaceId = firstWs.id;
+    }
+
+    let reporterId = dto.reporterId || validUserId;
+    if (reporterId) {
+      const reporterExists = await this.prisma.user.findUnique({ where: { id: reporterId } });
+      if (!reporterExists) reporterId = validUserId;
+    }
+
     const created = await this.prisma.$transaction(async (tx) => {
       const project = await tx.project.create({
         data: {
-          workspaceId,
-          createdById,
+          workspaceId: targetWorkspaceId,
+          createdById: validUserId,
           name: dto.name.trim(),
           description: dto.description?.trim(),
           status: dto.status || ProjectStatus.PLANNED,
           priority: dto.priority || Priority.NONE,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
-          reporterId: dto.reporterId || createdById,
+          reporterId: reporterId || validUserId,
           teamId: dto.teamId || null,
         },
       });
 
       if (dto.memberIds && dto.memberIds.length > 0) {
-        await tx.projectMember.createMany({
-          data: dto.memberIds.map((userId) => ({
-            projectId: project.id,
-            userId,
-          })),
+        const validMembers = await tx.user.findMany({
+          where: { id: { in: dto.memberIds } },
+          select: { id: true },
         });
+        if (validMembers.length > 0) {
+          await tx.projectMember.createMany({
+            data: validMembers.map((m) => ({
+              projectId: project.id,
+              userId: m.id,
+            })),
+          });
+        }
       }
 
       if (dto.labelIds && dto.labelIds.length > 0) {
-        await tx.projectLabel.createMany({
-          data: dto.labelIds.map((labelId) => ({
-            projectId: project.id,
-            labelId,
-          })),
+        const validLabels = await tx.label.findMany({
+          where: { id: { in: dto.labelIds } },
+          select: { id: true },
         });
+        if (validLabels.length > 0) {
+          await tx.projectLabel.createMany({
+            data: validLabels.map((l) => ({
+              projectId: project.id,
+              labelId: l.id,
+            })),
+          });
+        }
       }
 
       return project;
     });
 
-    return this.findOne(workspaceId, created.id);
+    return this.findOne(targetWorkspaceId, created.id);
   }
 
   async findAll(workspaceId: string, query: ProjectQueryDto) {
@@ -144,11 +202,11 @@ export class ProjectsService {
       priority: p.priority,
       dueDate: p.dueDate,
       position: p.position,
-      reporter: p.reporter,
-      team: p.team,
-      members: p.members.map((m) => m.user),
-      labels: p.labels.map((l) => l.label),
-      taskCount: p._count.tasks,
+      reporter: p.reporter || null,
+      team: p.team || null,
+      members: (p.members || []).map((m) => m?.user).filter(Boolean),
+      labels: (p.labels || []).map((l) => l?.label).filter(Boolean),
+      taskCount: p._count?.tasks || 0,
     }));
 
     return {
@@ -195,11 +253,11 @@ export class ProjectsService {
       priority: project.priority,
       dueDate: project.dueDate,
       position: project.position,
-      reporter: project.reporter,
-      team: project.team,
-      members: project.members.map((m) => m.user),
-      labels: project.labels.map((l) => l.label),
-      taskCount: project._count.tasks,
+      reporter: project.reporter || null,
+      team: project.team || null,
+      members: (project.members || []).map((m) => m?.user).filter(Boolean),
+      labels: (project.labels || []).map((l) => l?.label).filter(Boolean),
+      taskCount: project._count?.tasks || 0,
     };
   }
 

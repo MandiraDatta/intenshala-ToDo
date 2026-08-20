@@ -5,11 +5,13 @@ import Link from "next/link";
 import { GripVertical, Plus, SignalHigh, SignalMedium, SignalLow, MoreHorizontal, ChevronDown } from "lucide-react";
 import TaskCard from "./taskCard";
 import { VisibleFields } from "./taskHeader";
+import MemberAvatarStack from "./common/MemberAvatarStack";
 
 export interface Task {
   id: string;
   title: string;
   assignee?: { name: string; avatar?: string } | string;
+  members?: any[];
   dueDate?: string;
   priority?: string;
   status?: string;
@@ -198,9 +200,21 @@ export default function KanbanColumn({
 
                         {/* Members */}
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-amber-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-xs">
-                            {assigneeName.charAt(0)}
-                          </div>
+                          <MemberAvatarStack
+                            taskId={task.id}
+                            members={
+                              Array.isArray(task.members) && task.members.length > 0
+                                ? task.members.map((m: any) => ({
+                                    id: m.id || m.userId,
+                                    name: m.fullName || m.name || m.username || "Member",
+                                    avatar: m.avatarUrl || m.avatar,
+                                    initials: (m.fullName || m.username || "M")[0].toUpperCase(),
+                                  }))
+                                : assigneeName
+                                ? [{ id: assigneeName, name: assigneeName, initials: assigneeName.charAt(0).toUpperCase() }]
+                                : []
+                            }
+                          />
                         </div>
 
                         {/* Due Date */}

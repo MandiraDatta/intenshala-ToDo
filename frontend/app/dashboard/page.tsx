@@ -104,7 +104,13 @@ export default function Dashboard() {
           status: item.status || "TODO",
           priority: item.priority || "MEDIUM",
           dueDate: item.dueDate ? new Date(item.dueDate).toLocaleDateString("en-US", { day: "numeric", month: "short" }) : undefined,
-          assignee: item.members?.[0]?.user?.fullName || item.createdBy?.fullName,
+          members: Array.isArray(item.members) ? item.members.map((m: any) => ({
+            id: m.id || m.userId,
+            name: m.fullName || m.username || "Member",
+            avatar: m.avatarUrl || m.avatar,
+            initials: (m.fullName || m.username || "M")[0].toUpperCase(),
+          })) : [],
+          assignee: item.members?.[0]?.fullName || item.createdBy?.fullName,
           tags: item.labels?.map((l: any) => l.label?.name || l.name) || [],
         };
 

@@ -36,6 +36,7 @@ import { useSearchParams } from "next/navigation";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useUser } from "@/context/UserContext";
 import { taskService } from "@/services/task.service";
+import MemberAvatarStack from "@/components/common/MemberAvatarStack";
 
 interface Subtask {
   id: string;
@@ -334,26 +335,13 @@ function TaskDetailContent() {
                     <div className="flex items-center gap-3">
                       <span className="text-xs text-neutral-600 dark:text-neutral-400 w-20 font-semibold shrink-0">Properties</span>
                       <div className="flex items-center gap-2 flex-wrap">
-                        {assignedMembers.length > 0 ? (
-                          assignedMembers.map((m, idx) => (
-                            <div
-                              key={idx}
-                              className="h-6 px-2 rounded-full bg-[#F5F5F5] dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] flex items-center gap-1.5 text-xs font-semibold text-[#171717] dark:text-[#F5F5F5]"
-                            >
-                              <div className="w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center text-[9px] text-white font-bold">
-                                {m.charAt(0)}
-                              </div>
-                              <span>{m}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="h-6 px-2 rounded-full bg-[#F5F5F5] dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] flex items-center gap-1.5 text-xs font-semibold text-[#171717] dark:text-[#F5F5F5]">
-                            <div className="w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center text-[9px] text-white font-bold">
-                              U
-                            </div>
-                            <span>Unassigned</span>
-                          </div>
-                        )}
+                        <MemberAvatarStack
+                          members={assignedMembers.map((m) => ({
+                            id: m,
+                            name: m,
+                            initials: m.charAt(0).toUpperCase(),
+                          }))}
+                        />
 
                         {selectedDate && (
                           <div className="h-6 px-2 rounded-full bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400">

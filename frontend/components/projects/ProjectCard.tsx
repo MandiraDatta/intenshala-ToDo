@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Project, VisibleFields, StatusType } from "./types";
+import MemberAvatarStack from "@/components/common/MemberAvatarStack";
 
 interface ProjectCardProps {
   project: Project;
@@ -131,27 +132,7 @@ export default function ProjectCard({
       <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#F0F0F0] dark:border-[#262626]">
         {/* Members */}
         {visibleFields.members && (
-          <div className="flex items-center -space-x-1.5">
-            {project.members.map((member, i) => (
-              <div
-                key={i}
-                className="w-6 h-6 rounded-full border-2 border-white dark:border-[#171717] overflow-hidden bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0"
-                title={member.name}
-              >
-                {member.avatar ? (
-                  <Image
-                    src={member.avatar}
-                    alt={member.name}
-                    width={24}
-                    height={24}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  member.initials || member.name[0]
-                )}
-              </div>
-            ))}
-          </div>
+          <MemberAvatarStack members={project.members} />
         )}
 
         {/* Due Date */}

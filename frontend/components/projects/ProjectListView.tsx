@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Project, VisibleFields } from "./types";
 import { useState } from "react";
+import MemberAvatarStack from "@/components/common/MemberAvatarStack";
 
 interface ProjectListViewProps {
   projects: Project[];
@@ -153,27 +154,7 @@ export default function ProjectListView({
                   {/* Members */}
                   {visibleFields.members && (
                     <td className="px-4 py-2">
-                      <div className="flex items-center -space-x-1.5">
-                        {project.members.map((member, i) => (
-                          <div
-                            key={i}
-                            className="w-6 h-6 rounded-full border-2 border-white dark:border-[#171717] overflow-hidden bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0"
-                            title={member.name}
-                          >
-                            {member.avatar ? (
-                              <Image
-                                src={member.avatar}
-                                alt={member.name}
-                                width={24}
-                                height={24}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              member.initials || member.name[0]
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                      <MemberAvatarStack members={project.members} />
                     </td>
                   )}
 

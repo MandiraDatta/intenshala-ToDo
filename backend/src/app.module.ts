@@ -10,6 +10,8 @@ import { LabelsModule } from './labels/labels.module';
 import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
 import { PreferencesModule } from './preferences/preferences.module';
+import { MailModule } from './mail/mail.module';
+import { InvitesModule } from './invites/invites.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
@@ -25,6 +27,8 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     ProjectsModule,
     TasksModule,
     PreferencesModule,
+    MailModule,
+    InvitesModule,
   ],
   providers: [
     {

@@ -99,12 +99,16 @@ export default function ProjectsPage() {
         name: item.name || "Untitled Project",
         priority: item.priority ? (item.priority.charAt(0) + item.priority.slice(1).toLowerCase().replace('_', ' ')) as any : "Medium",
         status: item.status === "IN_PROGRESS" ? "In Progress" : (item.status === "COMPLETED" ? "Completed" : "Planned"),
-        members: item.members?.map((m: any) => ({
-          id: m.user?.id || m.id,
-          name: m.user?.fullName || m.fullName || "Member",
-          initials: (m.user?.fullName || m.fullName || "M").split(" ").map((n: string) => n[0]).join("").toUpperCase(),
-          avatar: m.user?.avatarUrl || m.avatarUrl || "/Pasted image.png",
-        })) || [{ id: "m1", name: "User", initials: "U", avatar: "/Pasted image.png" }],
+        members: (item.members || []).map((m: any) => ({
+          id: m.id || m.userId || `m-${Math.random()}`,
+          name: m.fullName || m.username || m.user?.fullName || m.name || "Member",
+          initials: (m.fullName || m.username || m.user?.fullName || m.name || "M")
+            .split(" ")
+            .map((n: string) => n[0])
+            .join("")
+            .toUpperCase(),
+          avatar: m.avatarUrl || m.avatar || m.user?.avatarUrl,
+        })),
         dueDate: item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "No Due Date",
         teams: item.team ? [item.team.name] : (item.teams?.map((t: any) => t.name) || []),
         labels: item.labels?.map((l: any) => l.name) || [],
@@ -170,6 +174,11 @@ export default function ProjectsPage() {
 
   const handleSaveProject = async (newProjData: Project) => {
     if (!activeWorkspace?.id) return;
+
+    // Optimistically update projects state & close modal immediately
+    setProjects((prev) => [newProjData, ...prev]);
+    setIsAddModalOpen(false);
+
     try {
       const statusMap: Record<string, string> = {
         "Planned": "PLANNED",
@@ -194,6 +203,7 @@ export default function ProjectsPage() {
       await fetchProjects();
     } catch (e) {
       console.error("Failed to create project on backend", e);
+      fetchProjects();
     }
   };
 

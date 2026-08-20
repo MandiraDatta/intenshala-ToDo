@@ -35,6 +35,7 @@ model User {
   taskMemberships    TaskMember[]
   viewPreferences    UserViewPreference[]
   activityLogs       ActivityLog[]
+  sentInvites        WorkspaceInvite[]    @relation("InvitedBy")
 
   @@map("users")
 }
@@ -55,6 +56,7 @@ model Workspace {
   labels          Label[]
   viewPreferences UserViewPreference[]
   activityLogs    ActivityLog[]
+  invites         WorkspaceInvite[]
 
   @@map("workspaces")
 }
@@ -273,3 +275,25 @@ model ActivityLog {
   @@index([entityType, entityId])
   @@map("activity_logs")
 }
+
+model WorkspaceInvite {
+  id          String   @id @default(uuid())
+  workspaceId String
+  email       String
+  role        String   @default("MEMBER")
+  token       String   @unique
+  invitedById String
+  taskId      String?
+  projectId   String?
+  status      String   @default("PENDING") // "PENDING" | "ACCEPTED" | "EXPIRED"
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, email])
+  @@map("workspace_invites")
+}
+
