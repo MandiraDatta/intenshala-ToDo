@@ -118,8 +118,8 @@ export default function KanbanColumn({
         {isExpanded && (
           <div
             className={`w-full overflow-x-auto border rounded-xl bg-white dark:bg-[#171717] shadow-xs transition-all ${isDragOver
-                ? "border-blue-500 ring-2 ring-blue-500/30 bg-blue-50/20 dark:bg-blue-950/20"
-                : "border-[#E5E5E5] dark:border-[#2A2A2A]"
+              ? "border-blue-500 ring-2 ring-blue-500/30 bg-blue-50/20 dark:bg-blue-950/20"
+              : "border-[#E5E5E5] dark:border-[#2A2A2A]"
               }`}
           >
             <div className="min-w-[36rem] flex flex-col">
@@ -255,8 +255,8 @@ export default function KanbanColumn({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={`w-full h-fit flex flex-col gap-3 rounded-xl bg-[#F5F5F5] dark:bg-[#111111] border transition-all p-3 ${isDragOver
-          ? "border-blue-500 ring-2 ring-blue-500/30 bg-blue-50/20 dark:bg-blue-950/20"
-          : "border-transparent dark:border-[#2A2A2A]"
+        ? "border-blue-500 ring-2 ring-blue-500/30 bg-blue-50/20 dark:bg-blue-950/20"
+        : "border-transparent dark:border-[#2A2A2A]"
         } ${className}`}
     >
       {/* Column Header */}

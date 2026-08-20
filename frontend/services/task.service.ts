@@ -11,6 +11,16 @@ export const taskService = {
     return data;
   },
 
+  async getTaskById(workspaceId: string, taskId: string) {
+    const { data } = await apiClient.get(`/workspaces/${workspaceId}/tasks/${taskId}`);
+    return data;
+  },
+
+  async updateTask(workspaceId: string, taskId: string, payload: any) {
+    const { data } = await apiClient.patch(`/workspaces/${workspaceId}/tasks/${taskId}`, payload);
+    return data;
+  },
+
   async updateTaskStatus(workspaceId: string, taskId: string, status: string) {
     const { data } = await apiClient.patch(`/workspaces/${workspaceId}/tasks/${taskId}/status`, { status });
     return data;
