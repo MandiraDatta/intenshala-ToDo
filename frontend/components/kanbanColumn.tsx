@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
-import { GripVertical, Plus, SignalHigh, SignalMedium, SignalLow, MoreHorizontal, ChevronDown } from "lucide-react";
+import { GripVertical, Plus, SignalHigh, SignalMedium, SignalLow, MoreHorizontal, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import TaskCard from "./taskCard";
 import { VisibleFields } from "./taskHeader";
 import MemberAvatarStack from "./common/MemberAvatarStack";
@@ -28,6 +29,8 @@ interface KanbanColumnProps {
   onAddTask?: (columnId?: string) => void;
   onMoreOptions?: (columnId?: string) => void;
   onUpdateTaskStatus?: (taskId: string, targetColumnId: string) => void;
+  onEditTask?: (task: Task) => void;
+  onDeleteTask?: (taskId: string) => void;
   renderTaskCard?: (task: Task) => React.ReactNode;
   className?: string;
 }
@@ -42,11 +45,37 @@ export default function KanbanColumn({
   onAddTask,
   onMoreOptions,
   onUpdateTaskStatus,
+  onEditTask,
+  onDeleteTask,
   renderTaskCard,
   className = "",
 }: KanbanColumnProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [activeMenuTaskId, setActiveMenuTaskId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActiveMenuTaskId(null);
+        setMenuPosition(null);
+      }
+    };
+    const handleScroll = () => {
+      setActiveMenuTaskId(null);
+      setMenuPosition(null);
+    };
+    if (activeMenuTaskId) {
+      document.addEventListener("mousedown", handleClickOutside);
+      window.addEventListener("scroll", handleScroll, true);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [activeMenuTaskId]);
 
   const handleAddTask = () => {
     if (onAddTask) {
@@ -228,12 +257,63 @@ export default function KanbanColumn({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onMoreOptions?.(id);
+                              if (activeMenuTaskId === task.id) {
+                                setActiveMenuTaskId(null);
+                                setMenuPosition(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setActiveMenuTaskId(task.id);
+                                setMenuPosition({
+                                  top: rect.bottom + 4,
+                                  left: rect.right - 128,
+                                });
+                              }
                             }}
                             className="text-[#737373] dark:text-[#A3A3A3] hover:text-black dark:hover:text-[#F5F5F5] transition-colors p-1 cursor-pointer"
+                            title="Actions"
                           >
                             <MoreHorizontal className="w-4 h-4 text-[#737373] dark:text-[#A3A3A3]" />
                           </button>
+
+                          {activeMenuTaskId === task.id && menuPosition && typeof window !== "undefined" && createPortal(
+                            <div
+                              ref={menuRef}
+                              style={{
+                                position: "fixed",
+                                top: `${menuPosition.top}px`,
+                                left: `${menuPosition.left}px`,
+                              }}
+                              className="w-32 bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-lg shadow-2xl z-[99999] p-1 flex flex-col animate-in fade-in zoom-in-95 duration-100"
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onEditTask) onEditTask(task);
+                                  setActiveMenuTaskId(null);
+                                  setMenuPosition(null);
+                                }}
+                                className="flex items-center gap-2 px-2 py-1.5 text-xs text-[#171717] dark:text-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded transition-colors w-full text-left cursor-pointer font-medium"
+                              >
+                                <Pencil size={12} />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onDeleteTask) onDeleteTask(task.id);
+                                  setActiveMenuTaskId(null);
+                                  setMenuPosition(null);
+                                }}
+                                className="flex items-center gap-2 px-2 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded transition-colors w-full text-left cursor-pointer font-medium"
+                              >
+                                <Trash2 size={12} />
+                                <span>Delete</span>
+                              </button>
+                            </div>,
+                            document.body
+                          )}
                         </div>
                       </div>
                     </div>

@@ -13,6 +13,7 @@ import {
   Tag,
   Users,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { Project, VisibleFields, StatusType } from "./types";
 import MemberAvatarStack from "@/components/common/MemberAvatarStack";
@@ -21,6 +22,7 @@ interface ProjectCardProps {
   project: Project;
   visibleFields: VisibleFields;
   onDeleteProject?: (id: string) => void;
+  onEditProject?: (project: Project) => void;
   onUpdateStatus?: (id: string, newStatus: StatusType) => void;
 }
 
@@ -28,6 +30,7 @@ export default function ProjectCard({
   project,
   visibleFields,
   onDeleteProject,
+  onEditProject,
 }: ProjectCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -105,6 +108,17 @@ export default function ProjectCard({
           </button>
           {isMenuOpen && (
             <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-lg shadow-xl z-50 p-1 flex flex-col">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onEditProject) onEditProject(project);
+                  setIsMenuOpen(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1.5 text-xs text-[#171717] dark:text-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded transition-colors w-full text-left cursor-pointer font-medium"
+              >
+                <Pencil size={12} />
+                <span>Edit</span>
+              </button>
               <button
                 type="button"
                 onClick={() => {

@@ -48,8 +48,9 @@ export default function ProjectsPage() {
     reporter: false,
   });
 
-  // Add Project modal state
+  // Add / Edit Project modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [addModalInitialStatus, setAddModalInitialStatus] = useState<StatusType>("Planned");
 
   // Load view mode and column preferences
@@ -63,7 +64,7 @@ export default function ProjectsPage() {
           }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [activeWorkspace?.id]);
 
   const handleViewModeChange = (mode: "list" | "board") => {
@@ -72,7 +73,7 @@ export default function ProjectsPage() {
       preferenceService.updateViewPreference(activeWorkspace.id, {
         entityType: 'PROJECT',
         viewType: mode.toUpperCase() as 'LIST' | 'BOARD',
-      }).catch(() => {});
+      }).catch(() => { });
     }
   };
 
@@ -93,13 +94,17 @@ export default function ProjectsPage() {
 
       const res = await projectService.getProjects(activeWorkspace.id, queryParams);
       const items = res.data || res || [];
-      
-      const formatted: Project[] = (Array.isArray(items) ? items : []).map((item: any) => ({
-        id: item.id,
-        name: item.name || "Untitled Project",
-        priority: item.priority ? (item.priority.charAt(0) + item.priority.slice(1).toLowerCase().replace('_', ' ')) as any : "Medium",
-        status: item.status === "IN_PROGRESS" ? "In Progress" : (item.status === "COMPLETED" ? "Completed" : "Planned"),
-        members: (item.members || []).map((m: any) => ({
+
+      const formatted: Project[] = (Array.isArray(items) ? items : []).map((item: any) => {
+        let savedMeta: Partial<Project> = {};
+        if (typeof window !== "undefined") {
+          try {
+            const raw = localStorage.getItem(`proj_meta_${item.id}`);
+            if (raw) savedMeta = JSON.parse(raw);
+          } catch (e) { }
+        }
+
+        const backendMembers = (item.members || []).map((m: any) => ({
           id: m.id || m.userId || `m-${Math.random()}`,
           name: m.fullName || m.username || m.user?.fullName || m.name || "Member",
           initials: (m.fullName || m.username || m.user?.fullName || m.name || "M")
@@ -108,12 +113,25 @@ export default function ProjectsPage() {
             .join("")
             .toUpperCase(),
           avatar: m.avatarUrl || m.avatar || m.user?.avatarUrl,
-        })),
-        dueDate: item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "No Due Date",
-        teams: item.team ? [item.team.name] : (item.teams?.map((t: any) => t.name) || []),
-        labels: item.labels?.map((l: any) => l.name) || [],
-        reporter: item.reporter?.fullName || "Admin",
-      }));
+        }));
+
+        const backendDueDate = item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : undefined;
+        const backendTeams = item.team ? [item.team.name] : (item.teams?.map((t: any) => t.name) || undefined);
+        const backendLabels = item.labels?.map((l: any) => l.name) || undefined;
+        const backendReporter = item.reporter?.fullName || undefined;
+
+        return {
+          id: item.id,
+          name: item.name || "Untitled Project",
+          priority: item.priority ? (item.priority.charAt(0) + item.priority.slice(1).toLowerCase().replace('_', ' ')) as any : "Medium",
+          status: item.status === "IN_PROGRESS" ? "In Progress" : (item.status === "COMPLETED" ? "Completed" : "Planned"),
+          members: (savedMeta.members && savedMeta.members.length > 0) ? savedMeta.members : backendMembers,
+          dueDate: (savedMeta.dueDate && savedMeta.dueDate !== "No Due Date") ? savedMeta.dueDate : (backendDueDate || "No Due Date"),
+          teams: (savedMeta.teams && savedMeta.teams.length > 0) ? savedMeta.teams : (backendTeams || []),
+          labels: (savedMeta.labels && savedMeta.labels.length > 0) ? savedMeta.labels : (backendLabels || []),
+          reporter: savedMeta.reporter || backendReporter || "",
+        };
+      });
 
       setProjects(formatted);
     } catch (e) {
@@ -168,42 +186,89 @@ export default function ProjectsPage() {
   };
 
   const handleOpenAddModal = (defaultStatus: StatusType = "Planned") => {
+    setEditingProject(null);
     setAddModalInitialStatus(defaultStatus);
+    setIsAddModalOpen(true);
+  };
+
+  const handleOpenEditModal = (project: Project) => {
+    setEditingProject(project);
+    setAddModalInitialStatus(project.status);
     setIsAddModalOpen(true);
   };
 
   const handleSaveProject = async (newProjData: Project) => {
     if (!activeWorkspace?.id) return;
 
-    // Optimistically update projects state & close modal immediately
-    setProjects((prev) => [newProjData, ...prev]);
-    setIsAddModalOpen(false);
+    const statusMap: Record<string, string> = {
+      "Planned": "PLANNED",
+      "In Progress": "IN_PROGRESS",
+      "Completed": "COMPLETED",
+    };
+    const priorityMap: Record<string, string> = {
+      "Urgent": "URGENT",
+      "High": "HIGH",
+      "Medium": "MEDIUM",
+      "Low": "LOW",
+      "No Priority": "NONE",
+    };
 
-    try {
-      const statusMap: Record<string, string> = {
-        "Planned": "PLANNED",
-        "In Progress": "IN_PROGRESS",
-        "Completed": "COMPLETED",
-      };
-      const priorityMap: Record<string, string> = {
-        "Urgent": "URGENT",
-        "High": "HIGH",
-        "Medium": "MEDIUM",
-        "Low": "LOW",
-        "No Priority": "NONE",
-      };
+    if (editingProject) {
+      const updatedProject = { ...editingProject, ...newProjData };
 
-      await projectService.createProject(activeWorkspace.id, {
-        name: newProjData.name,
-        description: "",
-        status: statusMap[newProjData.status] || "PLANNED",
-        priority: priorityMap[newProjData.priority] || "MEDIUM",
-      });
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(`proj_meta_${editingProject.id}`, JSON.stringify(updatedProject));
+        } catch (e) { }
+      }
 
-      await fetchProjects();
-    } catch (e) {
-      console.error("Failed to create project on backend", e);
-      fetchProjects();
+      setProjects((prev) =>
+        prev.map((p) => (p.id === editingProject.id ? updatedProject : p))
+      );
+      setIsAddModalOpen(false);
+
+      try {
+        await projectService.updateProject(activeWorkspace.id, editingProject.id, {
+          name: newProjData.name,
+          status: statusMap[newProjData.status] || "PLANNED",
+          priority: priorityMap[newProjData.priority] || "MEDIUM",
+        });
+        await fetchProjects();
+      } catch (e) {
+        console.error("Failed to update project on backend", e);
+        fetchProjects();
+      } finally {
+        setEditingProject(null);
+      }
+    } else {
+      if (typeof window !== "undefined" && newProjData.id) {
+        try {
+          localStorage.setItem(`proj_meta_${newProjData.id}`, JSON.stringify(newProjData));
+        } catch (e) { }
+      }
+
+      setProjects((prev) => [newProjData, ...prev]);
+      setIsAddModalOpen(false);
+
+      try {
+        const created = await projectService.createProject(activeWorkspace.id, {
+          name: newProjData.name,
+          description: "",
+          status: statusMap[newProjData.status] || "PLANNED",
+          priority: priorityMap[newProjData.priority] || "MEDIUM",
+        });
+
+        if (created?.id && typeof window !== "undefined") {
+          const finalProj = { ...newProjData, id: created.id };
+          try {
+            localStorage.setItem(`proj_meta_${created.id}`, JSON.stringify(finalProj));
+          } catch (e) { }
+        }
+        await fetchProjects();
+      } catch (e) {
+        console.error("Failed to create project on backend", e);
+        fetchProjects();
+      }
     }
   };
 
@@ -244,9 +309,8 @@ export default function ProjectsPage() {
     <div className="min-h-screen flex bg-white dark:bg-[#0A0A0A] transition-colors duration-200">
       {/* Sidebar Container */}
       <div
-        className={`transition-all duration-300 ease-in-out relative z-40 ${
-          isSidebarOpen ? "w-[13.5rem] overflow-visible" : "w-0 overflow-hidden"
-        }`}
+        className={`transition-all duration-300 ease-in-out relative z-40 ${isSidebarOpen ? "w-[13.5rem] overflow-visible" : "w-0 overflow-hidden"
+          }`}
       >
         <Sidebar />
       </div>
@@ -294,6 +358,7 @@ export default function ProjectsPage() {
                 visibleFields={visibleFields}
                 onAddProject={() => handleOpenAddModal("Planned")}
                 onDeleteProject={handleDeleteProject}
+                onEditProject={handleOpenEditModal}
               />
             ) : (
               <ProjectBoardView
@@ -301,6 +366,7 @@ export default function ProjectsPage() {
                 visibleFields={visibleFields}
                 onAddProject={handleOpenAddModal}
                 onDeleteProject={handleDeleteProject}
+                onEditProject={handleOpenEditModal}
                 onUpdateStatus={handleUpdateStatus}
               />
             )}
@@ -308,12 +374,16 @@ export default function ProjectsPage() {
         </div>
       </main>
 
-      {/* Add Project Modal */}
+      {/* Add / Edit Project Modal */}
       <AddProjectModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingProject(null);
+        }}
         onSave={handleSaveProject}
         initialStatus={addModalInitialStatus}
+        initialProject={editingProject}
       />
     </div>
   );

@@ -7,6 +7,8 @@ import { useWorkspace } from "@/context/WorkspaceContext";
 import { useTheme } from "@/context/ThemeContext";
 import { inviteService } from "@/services/invite.service";
 
+import { projectService } from "@/services/project.service";
+
 export interface MemberItem {
   id: string;
   name: string;
@@ -31,6 +33,7 @@ interface MemberAvatarStackProps {
   maxVisible?: number;
   taskId?: string;
   projectId?: string;
+  showPlusButton?: boolean;
 }
 
 export default function MemberAvatarStack({
@@ -39,6 +42,7 @@ export default function MemberAvatarStack({
   maxVisible = 3,
   taskId,
   projectId,
+  showPlusButton = true,
 }: MemberAvatarStackProps) {
   const { activeWorkspace } = useWorkspace();
   const { currentColorHex } = useTheme();
@@ -62,23 +66,41 @@ export default function MemberAvatarStack({
   const visibleMembers = members.slice(0, maxVisible);
   const overflowCount = members.length - maxVisible;
 
-  // Load existing workspace members when popover opens
+  // Load existing workspace members when popover opens (filtering to project members if in project/task context)
   useEffect(() => {
     if (isPopoverOpen && activeWorkspace?.id) {
       setLoadingMembers(true);
-      inviteService
-        .getWorkspaceMembers(activeWorkspace.id)
-        .then((data) => {
-          setExistingMembers(Array.isArray(data) ? data : []);
-        })
-        .catch((err) => {
-          console.error("Failed to load workspace members", err);
-        })
-        .finally(() => {
+      const loadData = async () => {
+        try {
+          const workspaceData = await inviteService.getWorkspaceMembers(activeWorkspace.id);
+          let membersList: ExistingWorkspaceMember[] = Array.isArray(workspaceData) ? workspaceData : [];
+
+          if (projectId) {
+            try {
+              const proj = await projectService.getProjectById(activeWorkspace.id, projectId);
+              if (proj && Array.isArray(proj.members) && proj.members.length > 0) {
+                const projMemberNames = proj.members.map((m: any) => (m.name || "").toLowerCase());
+                membersList = membersList.filter((m) => {
+                  const name = (m.fullName || m.username || m.email || "").toLowerCase();
+                  return projMemberNames.some((pName: string) => pName && name.includes(pName));
+                });
+              }
+            } catch (projErr) {
+              console.warn("Could not fetch project members for filtering", projErr);
+            }
+          }
+
+          setExistingMembers(membersList);
+        } catch (err) {
+          console.error("Failed to load members", err);
+        } finally {
           setLoadingMembers(false);
-        });
+        }
+      };
+
+      loadData();
     }
-  }, [isPopoverOpen, activeWorkspace?.id]);
+  }, [isPopoverOpen, activeWorkspace?.id, projectId]);
 
   // Handle inviting via email (Tab 2)
   const handleSendInviteEmail = async (e: React.FormEvent) => {
@@ -234,8 +256,8 @@ export default function MemberAvatarStack({
                   setFeedback(null);
                 }}
                 className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${activeTab === "existing"
-                    ? "bg-[#F5F5F5] dark:bg-[#262626] text-[#171717] dark:text-[#F5F5F5] shadow-2xs"
-                    : "text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5]"
+                  ? "bg-[#F5F5F5] dark:bg-[#262626] text-[#171717] dark:text-[#F5F5F5] shadow-2xs"
+                  : "text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5]"
                   }`}
                 style={
                   activeTab === "existing"
@@ -254,8 +276,8 @@ export default function MemberAvatarStack({
                   setFeedback(null);
                 }}
                 className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${activeTab === "invite_mail"
-                    ? "bg-[#F5F5F5] dark:bg-[#262626] text-[#171717] dark:text-[#F5F5F5] shadow-2xs"
-                    : "text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5]"
+                  ? "bg-[#F5F5F5] dark:bg-[#262626] text-[#171717] dark:text-[#F5F5F5] shadow-2xs"
+                  : "text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5]"
                   }`}
                 style={
                   activeTab === "invite_mail"
@@ -391,8 +413,8 @@ export default function MemberAvatarStack({
             {feedback && (
               <div
                 className={`p-2.5 rounded-lg text-xs font-medium flex items-center gap-2 ${feedback.type === "success"
-                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60"
-                    : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
+                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60"
+                  : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60"
                   }`}
               >
                 {feedback.type === "success" ? (
