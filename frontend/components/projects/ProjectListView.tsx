@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   SignalHigh,
   SignalMedium,
@@ -135,7 +136,12 @@ export default function ProjectListView({
                   {/* Project Name */}
                   {visibleFields.project && (
                     <td className="px-4 py-2 font-semibold text-[#171717] dark:text-[#F5F5F5]">
-                      {project.name}
+                      <Link
+                        href={`/task?projectId=${project.id}`}
+                        className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                      >
+                        {project.name}
+                      </Link>
                     </td>
                   )}
 

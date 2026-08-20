@@ -55,6 +55,7 @@ interface CommentItem {
 function TaskDetailContent() {
   const searchParams = useSearchParams();
   const taskId = searchParams.get("id");
+  const projectId = searchParams.get("projectId");
   const { activeWorkspace } = useWorkspace();
   const { user } = useUser();
 
@@ -101,9 +102,9 @@ function TaskDetailContent() {
     ]);
   };
 
-  // Fetch real task details if ID exists
+  // Fetch real task details if ID or projectId exists
   useEffect(() => {
-    if (!taskId || !activeWorkspace?.id) {
+    if ((!taskId && !projectId) || !activeWorkspace?.id) {
       setReporter(user?.fullName || "Admin");
       setAssignedMembers(user?.fullName ? [user.fullName] : []);
       return;
@@ -112,7 +113,17 @@ function TaskDetailContent() {
     const fetchTask = async () => {
       setLoading(true);
       try {
-        const data = await taskService.getTaskById(activeWorkspace.id, taskId);
+        let data = null;
+        if (taskId) {
+          data = await taskService.getTaskById(activeWorkspace.id, taskId);
+        } else if (projectId) {
+          const res = await taskService.getTasks(activeWorkspace.id, { projectId });
+          const tasksList = res.data || res || [];
+          if (Array.isArray(tasksList) && tasksList.length > 0) {
+            data = tasksList[0];
+          }
+        }
+
         if (data) {
           if (data.title) setTaskTitle(data.title);
           if (data.description) setDescription(data.description);
@@ -133,6 +144,9 @@ function TaskDetailContent() {
           } else if (user?.fullName) {
             setReporter(user.fullName);
           }
+        } else {
+          setReporter(user?.fullName || "Admin");
+          setAssignedMembers(user?.fullName ? [user.fullName] : []);
         }
       } catch (err) {
         console.error("Failed to load task details from backend:", err);
@@ -142,7 +156,7 @@ function TaskDetailContent() {
     };
 
     fetchTask();
-  }, [taskId, activeWorkspace?.id, user?.fullName]);
+  }, [taskId, projectId, activeWorkspace?.id, user?.fullName]);
 
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();

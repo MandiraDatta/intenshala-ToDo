@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import {
   SignalHigh,
@@ -85,7 +86,12 @@ export default function ProjectCard({
       {/* Header: Project Name & Actions Menu */}
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold text-xs text-[#171717] dark:text-[#F5F5F5] leading-snug">
-          {project.name}
+          <Link
+            href={`/task?projectId=${project.id}`}
+            className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            {project.name}
+          </Link>
         </h3>
         <div className="relative shrink-0">
           <button
