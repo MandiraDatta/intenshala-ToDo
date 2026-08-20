@@ -88,7 +88,7 @@ export default function ProjectCard({
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold text-xs text-[#171717] dark:text-[#F5F5F5] leading-snug">
           <Link
-            href={`/task?projectId=${project.id}`}
+            href={`/dashboard?projectId=${project.id}`}
             className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             {project.name}

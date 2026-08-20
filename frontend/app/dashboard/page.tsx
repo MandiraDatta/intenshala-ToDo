@@ -4,15 +4,21 @@ import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import TaskHeader, { VisibleFields } from "@/components/taskHeader";
 import KanbanColumn, { Task } from "@/components/kanbanColumn";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { taskService } from "@/services/task.service";
+import { projectService } from "@/services/project.service";
 import { preferenceService } from "@/services/preference.service";
 
-export default function Dashboard() {
+function DashboardContent() {
   const { activeWorkspace } = useWorkspace();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const projectIdParam = searchParams.get("projectId");
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [pageTitle, setPageTitle] = useState("Tasks");
 
   // View mode state: 'board' vs 'list'
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
@@ -63,6 +69,46 @@ export default function Dashboard() {
       .catch(() => { });
   }, [activeWorkspace?.id]);
 
+  // Auto-redirect to first project if no projectIdParam is present (ensuring tasks always belong to a project)
+  useEffect(() => {
+    if (!activeWorkspace?.id) return;
+    if (!projectIdParam) {
+      projectService
+        .getProjects(activeWorkspace.id)
+        .then((res) => {
+          const projectsList = res.data || res || [];
+          if (Array.isArray(projectsList) && projectsList.length > 0) {
+            router.replace(`/dashboard?projectId=${projectsList[0].id}`);
+          } else {
+            router.replace("/projects");
+          }
+        })
+        .catch(() => {
+          router.replace("/projects");
+        });
+    }
+  }, [activeWorkspace?.id, projectIdParam, router]);
+
+  // Fetch project details to show project name in header title if projectIdParam is set
+  useEffect(() => {
+    if (activeWorkspace?.id && projectIdParam) {
+      projectService
+        .getProjectById(activeWorkspace.id, projectIdParam)
+        .then((proj) => {
+          if (proj?.name) {
+            setPageTitle(proj.name);
+          } else {
+            setPageTitle("Project Tasks");
+          }
+        })
+        .catch(() => {
+          setPageTitle("Project Tasks");
+        });
+    } else {
+      setPageTitle("Tasks");
+    }
+  }, [activeWorkspace?.id, projectIdParam]);
+
   const handleViewModeChange = (mode: "board" | "list") => {
     setViewMode(mode);
     if (activeWorkspace?.id) {
@@ -89,6 +135,7 @@ export default function Dashboard() {
     try {
       const res = await taskService.getTasks(activeWorkspace.id, {
         search: searchQuery.trim() || undefined,
+        projectId: projectIdParam || undefined,
       });
       const items = res.data || res || [];
 
@@ -98,6 +145,10 @@ export default function Dashboard() {
       const onHoldTasks: Task[] = [];
 
       (Array.isArray(items) ? items : []).forEach((item: any) => {
+        if (projectIdParam && item.projectId && item.projectId !== projectIdParam) {
+          return;
+        }
+
         const formattedTask: Task = {
           id: item.id,
           title: item.title,
@@ -133,7 +184,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [activeWorkspace?.id, searchQuery]);
+  }, [activeWorkspace?.id, searchQuery, projectIdParam]);
 
   useEffect(() => {
     fetchTasks();
@@ -208,6 +259,7 @@ export default function Dashboard() {
           status: statusMap[targetColId] || "TODO",
           priority: "MEDIUM",
           dueDate: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
+          projectId: projectIdParam || undefined,
         });
         await fetchTasks();
       } catch (err) {
@@ -277,6 +329,7 @@ export default function Dashboard() {
           <div className="h-full w-full gap-5 flex flex-col">
             {/* Tasks Header Component */}
             <TaskHeader
+              title={pageTitle}
               viewMode={viewMode}
               onViewModeChange={handleViewModeChange}
               visibleFields={visibleFields}
@@ -418,5 +471,19 @@ export default function Dashboard() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full h-screen flex items-center justify-center text-xs text-neutral-400 font-medium">
+          Loading dashboard...
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
   );
 }

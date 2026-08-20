@@ -138,7 +138,7 @@ export default function ProjectListView({
                   {visibleFields.project && (
                     <td className="px-4 py-2 font-semibold text-[#171717] dark:text-[#F5F5F5]">
                       <Link
-                        href={`/task?projectId=${project.id}`}
+                        href={`/dashboard?projectId=${project.id}`}
                         className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                       >
                         {project.name}
