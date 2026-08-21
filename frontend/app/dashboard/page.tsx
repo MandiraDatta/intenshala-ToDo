@@ -12,9 +12,11 @@ import { taskService } from "@/services/task.service";
 import { projectService } from "@/services/project.service";
 import { preferenceService } from "@/services/preference.service";
 import InviteModal from "@/components/common/InviteModal";
+import { useRole } from "@/hooks/useRole";
 
 function DashboardContent() {
-  const { activeWorkspace } = useWorkspace();
+  const { activeWorkspace, myRole } = useWorkspace();
+  const { canDeleteTask, canEditTask, isMember } = useRole();
   const searchParams = useSearchParams();
   const router = useRouter();
   const projectIdParam = searchParams.get("projectId");
@@ -497,9 +499,11 @@ function DashboardContent() {
                         );
                       })
                     ) : null}
-                    <option value="__INVITE__" className="font-semibold text-blue-600">
-                      + Invite New Member...
-                    </option>
+                    {myRole !== 'MEMBER' && (
+                      <option value="__INVITE__" className="font-semibold text-blue-600">
+                        + Invite New Member...
+                      </option>
+                    )}
                   </select>
                 </div>
 

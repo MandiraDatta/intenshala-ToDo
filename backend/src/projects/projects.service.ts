@@ -110,13 +110,25 @@ export class ProjectsService {
     return this.findOne(targetWorkspaceId, created.id);
   }
 
-  async findAll(workspaceId: string, query: ProjectQueryDto) {
+  async findAll(workspaceId: string, query: ProjectQueryDto, requesterId?: string, requesterRole?: string) {
     const { page = 1, limit = 20, search, status, priority, memberId, teamId, labelId, reporterId, dueDate, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
     const where: Prisma.ProjectWhereInput = {
       workspaceId,
       deletedAt: null,
     };
+
+    // RBAC: Members can only see projects they are explicitly added to (or assigned a task in)
+    if (requesterRole === 'MEMBER' && requesterId) {
+      where.AND = [
+        {
+          OR: [
+            { members: { some: { userId: requesterId } } },
+            { tasks: { some: { members: { some: { userId: requesterId } } } } },
+          ],
+        },
+      ];
+    }
 
     if (search) {
       where.OR = [
@@ -180,7 +192,17 @@ export class ProjectsService {
           team: { select: { id: true, name: true } },
           members: {
             include: {
-              user: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
+              user: { select: { id: true, email: true, fullName: true, username: true, avatarUrl: true } },
+            },
+          },
+          tasks: {
+            where: { deletedAt: null },
+            include: {
+              members: {
+                include: {
+                  user: { select: { id: true, email: true, fullName: true, username: true, avatarUrl: true } },
+                },
+              },
             },
           },
           labels: {
@@ -193,21 +215,41 @@ export class ProjectsService {
       }),
     ]);
 
-    const formatted = projects.map((p) => ({
-      id: p.id,
-      workspaceId: p.workspaceId,
-      name: p.name,
-      description: p.description,
-      status: p.status,
-      priority: p.priority,
-      dueDate: p.dueDate,
-      position: p.position,
-      reporter: p.reporter || null,
-      team: p.team || null,
-      members: (p.members || []).map((m) => m?.user).filter(Boolean),
-      labels: (p.labels || []).map((l) => l?.label).filter(Boolean),
-      taskCount: p._count?.tasks || 0,
-    }));
+    const formatted = projects.map((p) => {
+      // Direct project members
+      const directMembers = (p.members || []).map((m) => m?.user).filter(Boolean)
+        .map((u) => ({ ...u, source: 'project' as const }));
+
+      // Task-sourced members (anyone assigned to any task in this project)
+      const taskMembers = (p.tasks || []).flatMap((t) =>
+        (t.members || []).map((m) => m?.user).filter(Boolean)
+          .map((u) => ({ ...u, source: 'task' as const }))
+      );
+
+      // Merge and deduplicate by user ID; direct membership takes precedence
+      const seenIds = new Set<string>();
+      const allMembers = [...directMembers, ...taskMembers].filter((u) => {
+        if (!u || seenIds.has(u.id)) return false;
+        seenIds.add(u.id);
+        return true;
+      });
+
+      return {
+        id: p.id,
+        workspaceId: p.workspaceId,
+        name: p.name,
+        description: p.description,
+        status: p.status,
+        priority: p.priority,
+        dueDate: p.dueDate,
+        position: p.position,
+        reporter: p.reporter || null,
+        team: p.team || null,
+        members: allMembers,
+        labels: (p.labels || []).map((l) => l?.label).filter(Boolean),
+        taskCount: p._count?.tasks || 0,
+      };
+    });
 
     return {
       data: formatted,
@@ -228,7 +270,17 @@ export class ProjectsService {
         team: { select: { id: true, name: true } },
         members: {
           include: {
-            user: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
+            user: { select: { id: true, email: true, fullName: true, username: true, avatarUrl: true } },
+          },
+        },
+        tasks: {
+          where: { deletedAt: null },
+          include: {
+            members: {
+              include: {
+                user: { select: { id: true, email: true, fullName: true, username: true, avatarUrl: true } },
+              },
+            },
           },
         },
         labels: {
@@ -244,6 +296,24 @@ export class ProjectsService {
       throw new NotFoundException('Project not found.');
     }
 
+    // Direct project members
+    const directMembers = (project.members || []).map((m) => m?.user).filter(Boolean)
+      .map((u) => ({ ...u, source: 'project' as const }));
+
+    // Task-sourced members (anyone assigned to any task in this project)
+    const taskMembers = (project.tasks || []).flatMap((t) =>
+      (t.members || []).map((m) => m?.user).filter(Boolean)
+        .map((u) => ({ ...u, source: 'task' as const }))
+    );
+
+    // Merge and deduplicate by user ID; direct membership takes precedence
+    const seenIds = new Set<string>();
+    const allMembers = [...directMembers, ...taskMembers].filter((u) => {
+      if (!u || seenIds.has(u.id)) return false;
+      seenIds.add(u.id);
+      return true;
+    });
+
     return {
       id: project.id,
       workspaceId: project.workspaceId,
@@ -255,7 +325,7 @@ export class ProjectsService {
       position: project.position,
       reporter: project.reporter || null,
       team: project.team || null,
-      members: (project.members || []).map((m) => m?.user).filter(Boolean),
+      members: allMembers,
       labels: (project.labels || []).map((l) => l?.label).filter(Boolean),
       taskCount: project._count?.tasks || 0,
     };

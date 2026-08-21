@@ -4,6 +4,7 @@ import { CreateInviteDto } from './dto/create-invite.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { WorkspaceMemberGuard } from '../workspaces/guards/workspace-member.guard';
 import { CurrentUser } from '../common/decorators/user.decorator';
+import { Public } from '../common/decorators/public.decorator';
 
 @Controller()
 export class InvitesController {
@@ -19,6 +20,7 @@ export class InvitesController {
     return this.invitesService.createInvite(workspaceId, inviterId, dto);
   }
 
+  @Public()
   @Get('invites/:token')
   getInvite(@Param('token') token: string) {
     return this.invitesService.getInviteByToken(token);

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronRight, Check, UserPlus } from "lucide-react";
 import { FilterConfig, ActiveFilters } from "./types";
 import InviteModal from "../common/InviteModal";
+import { useWorkspace } from "@/context/WorkspaceContext";
 
 interface FilterMenuProps {
   filters: FilterConfig[];
@@ -20,6 +21,7 @@ export default function FilterMenu({
   isOpen,
   onClose,
 }: FilterMenuProps) {
+  const { myRole } = useWorkspace();
   const [activeSubmenuKey, setActiveSubmenuKey] = useState<string | null>(null);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,7 +73,7 @@ export default function FilterMenu({
             </div>
 
             {/* Add / Invite Member Action inside Members Submenu */}
-            {activeFilterConfig.key === "members" && (
+            {activeFilterConfig.key === "members" && myRole !== 'MEMBER' && (
               <button
                 type="button"
                 onClick={() => {

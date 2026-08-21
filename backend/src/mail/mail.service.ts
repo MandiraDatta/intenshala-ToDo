@@ -19,16 +19,19 @@ export class MailService {
     toEmail: string;
     inviterName: string;
     workspaceName: string;
+    projectName?: string;
     inviteLink: string;
   }): Promise<{ success: boolean; data?: any; error?: any }> {
-    const { toEmail, inviterName, workspaceName, inviteLink } = params;
+    const { toEmail, inviterName, workspaceName, projectName, inviteLink } = params;
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+
+    const entityName = projectName ? `project ${projectName} (in ${workspaceName})` : `workspace ${workspaceName}`;
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e5e5; rounded-radius: 12px; background-color: #ffffff;">
-        <h2 style="color: #171717; margin-bottom: 16px;">You've been invited to join ${workspaceName}!</h2>
+        <h2 style="color: #171717; margin-bottom: 16px;">You've been invited to join ${projectName ? projectName : workspaceName}!</h2>
         <p style="color: #525252; font-size: 14px; line-height: 1.5;">
-          <strong>${inviterName}</strong> has invited you to collaborate on <strong>${workspaceName}</strong> in Pyramid Task & Project Management.
+          <strong>${inviterName}</strong> has invited you to collaborate on <strong>${entityName}</strong> in Pyramid Task & Project Management.
         </p>
         <div style="margin: 30px 0; text-align: center;">
           <a href="${inviteLink}" style="background-color: #171717; color: #ffffff; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block;">
@@ -46,7 +49,7 @@ export class MailService {
       </div>
     `;
 
-    this.logger.log(`[INVITE EMAIL] Sending invite to ${toEmail} for workspace '${workspaceName}' (Link: ${inviteLink})`);
+    this.logger.log(`[INVITE EMAIL] Sending invite to ${toEmail} for ${entityName} (Link: ${inviteLink})`);
 
     if (!this.resend) {
       this.logger.warn(`Resend client not initialized. Simulated email delivery to ${toEmail}`);
@@ -57,7 +60,7 @@ export class MailService {
       const data = await this.resend.emails.send({
         from: fromEmail,
         to: [toEmail],
-        subject: `Invitation to join ${workspaceName} on Pyramid`,
+        subject: `Invitation to join ${projectName ? projectName : workspaceName} on Pyramid`,
         html: htmlContent,
       });
 

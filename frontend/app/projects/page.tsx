@@ -16,11 +16,13 @@ import {
   StatusType,
 } from "@/components/projects/types";
 import { useWorkspace } from "@/context/WorkspaceContext";
+import { useRole } from "@/hooks/useRole";
 import { projectService } from "@/services/project.service";
 import { preferenceService } from "@/services/preference.service";
 
 export default function ProjectsPage() {
   const { activeWorkspace } = useWorkspace();
+  const { canManageProjects } = useRole();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
 
   // View Mode: 'list' or 'board'
@@ -113,6 +115,8 @@ export default function ProjectsPage() {
             .join("")
             .toUpperCase(),
           avatar: m.avatarUrl || m.avatar || m.user?.avatarUrl,
+          source: (m.source === 'task' ? 'task' : 'project') as 'project' | 'task',
+          email: m.email || m.user?.email,
         }));
 
         const backendDueDate = item.dueDate ? new Date(item.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : undefined;
@@ -326,7 +330,7 @@ export default function ProjectsPage() {
             {/* Header section with Search, Fields, Filter, View Switcher & Add Task */}
             <TaskHeader
               title="Projects"
-              addLabel="Add Task"
+              addLabel={canManageProjects ? "Add Project" : undefined}
               viewMode={viewMode}
               onViewModeChange={handleViewModeChange}
               searchQuery={searchQuery}
@@ -336,7 +340,7 @@ export default function ProjectsPage() {
               filterConfigs={FILTER_CONFIGS}
               activeFilters={activeFilters}
               onSelectFilter={handleSelectFilter}
-              onAddTask={() => handleOpenAddModal("Planned")}
+              onAddTask={canManageProjects ? () => handleOpenAddModal("Planned") : undefined}
             />
 
             {/* Active Filter Chips Bar */}
@@ -356,15 +360,18 @@ export default function ProjectsPage() {
               <ProjectListView
                 projects={projects}
                 visibleFields={visibleFields}
-                onAddProject={() => handleOpenAddModal("Planned")}
+                onAddProject={canManageProjects ? () => handleOpenAddModal("Planned") : () => {}}
                 onDeleteProject={handleDeleteProject}
                 onEditProject={handleOpenEditModal}
+                onUpdateProject={(updated) =>
+                  setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+                }
               />
             ) : (
               <ProjectBoardView
                 projects={projects}
                 visibleFields={visibleFields}
-                onAddProject={handleOpenAddModal}
+                onAddProject={canManageProjects ? handleOpenAddModal : () => {}}
                 onDeleteProject={handleDeleteProject}
                 onEditProject={handleOpenEditModal}
                 onUpdateStatus={handleUpdateStatus}

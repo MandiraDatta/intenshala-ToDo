@@ -299,7 +299,7 @@ function ProjectMembersModal({
                     key={mem.id}
                     className="flex items-center justify-between p-2 rounded-lg bg-[#FAFAFA] dark:bg-[#202020] border border-[#F0F0F0] dark:border-[#2A2A2A]"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div
                         className="w-7 h-7 rounded-full text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-2xs"
                         style={{ backgroundColor: currentColorHex }}
@@ -316,19 +316,40 @@ function ProjectMembersModal({
                           mem.initials || mem.name[0].toUpperCase()
                         )}
                       </div>
-                      <span className="text-xs font-medium text-[#171717] dark:text-[#F5F5F5]">
-                        {mem.name}
-                      </span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-medium text-[#171717] dark:text-[#F5F5F5] truncate">
+                          {mem.name}
+                        </span>
+                        {mem.email && (
+                          <span className="text-[10px] text-[#737373] dark:text-[#A3A3A3] leading-none mt-0.5 truncate">
+                            {mem.email}
+                          </span>
+                        )}
+                        {mem.source === 'task' && (
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 leading-none mt-0.5">
+                            via task
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveMember(mem.id)}
-                      className="p-1 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-[#737373] dark:text-[#A3A3A3] hover:text-rose-600 dark:hover:text-rose-400 rounded transition-colors cursor-pointer"
-                      title="Remove member"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    {mem.source === 'task' ? (
+                      <span
+                        title="This member is assigned via a task. Edit the task to remove them."
+                        className="text-[10px] font-medium text-[#A3A3A3] dark:text-[#737373] px-1.5 py-0.5 bg-[#F0F0F0] dark:bg-[#2A2A2A] rounded-md shrink-0"
+                      >
+                        read-only
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMember(mem.id)}
+                        className="p-1 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-[#737373] dark:text-[#A3A3A3] hover:text-rose-600 dark:hover:text-rose-400 rounded transition-colors cursor-pointer shrink-0"
+                        title="Remove member"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -369,16 +390,23 @@ function ProjectMembersModal({
                       key={m.id || m.userId}
                       className="flex items-center justify-between p-2 rounded-lg hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors"
                     >
-                      <div className="flex items-center gap-2 truncate">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
                         <div
                           className="w-6 h-6 rounded-full text-white flex items-center justify-center text-[10px] font-bold shrink-0"
                           style={{ backgroundColor: currentColorHex }}
                         >
                           {(m.fullName || m.username || "M")[0].toUpperCase()}
                         </div>
-                        <span className="text-xs font-medium text-[#171717] dark:text-[#F5F5F5] truncate">
-                          {name}
-                        </span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-medium text-[#171717] dark:text-[#F5F5F5] truncate">
+                            {name}
+                          </span>
+                          {m.email && (
+                            <span className="text-[10px] text-[#737373] dark:text-[#A3A3A3] leading-none truncate">
+                              {m.email}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {isAdded ? (
@@ -641,7 +669,7 @@ export default function ProjectListView({
                     </td>
                   )}
 
-                  {/* Actions */}
+                  {/* Actions — button always visible; Edit/Delete only for OWNER/ADMIN */}
                   <td className="px-4 py-2 text-right relative">
                     <div className="inline-block">
                       <button
@@ -688,30 +716,34 @@ export default function ProjectListView({
                             <Users size={12} />
                             <span>Members</span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (onEditProject) onEditProject(project);
-                              setActiveMenuId(null);
-                              setMenuPosition(null);
-                            }}
-                            className="flex items-center gap-2 px-2 py-1.5 text-xs text-[#171717] dark:text-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded transition-colors w-full text-left cursor-pointer font-medium"
-                          >
-                            <Pencil size={12} />
-                            <span>Edit</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (onDeleteProject) onDeleteProject(project.id);
-                              setActiveMenuId(null);
-                              setMenuPosition(null);
-                            }}
-                            className="flex items-center gap-2 px-2 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded transition-colors w-full text-left cursor-pointer font-medium"
-                          >
-                            <Trash2 size={12} />
-                            <span>Delete</span>
-                          </button>
+                          {onEditProject && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onEditProject(project);
+                                setActiveMenuId(null);
+                                setMenuPosition(null);
+                              }}
+                              className="flex items-center gap-2 px-2 py-1.5 text-xs text-[#171717] dark:text-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded transition-colors w-full text-left cursor-pointer font-medium"
+                            >
+                              <Pencil size={12} />
+                              <span>Edit</span>
+                            </button>
+                          )}
+                          {onDeleteProject && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onDeleteProject(project.id);
+                                setActiveMenuId(null);
+                                setMenuPosition(null);
+                              }}
+                              className="flex items-center gap-2 px-2 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded transition-colors w-full text-left cursor-pointer font-medium"
+                            >
+                              <Trash2 size={12} />
+                              <span>Delete</span>
+                            </button>
+                          )}
                         </div>,
                         document.body
                       )}
@@ -724,17 +756,19 @@ export default function ProjectListView({
         </table>
       </div>
 
-      {/* Add Project Row at the bottom of the table */}
-      <div className="p-2 border-t border-[#E5E5E5] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111]">
-        <button
-          type="button"
-          onClick={onAddProject}
-          className="flex items-center gap-1.5 text-xs font-semibold text-[#171717] dark:text-[#F5F5F5] hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-1 cursor-pointer"
-        >
-          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span>Add Project</span>
-        </button>
-      </div>
+      {/* Add Project Row — only shown for OWNER/ADMIN */}
+      {onAddProject && (
+        <div className="p-2 border-t border-[#E5E5E5] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111]">
+          <button
+            type="button"
+            onClick={onAddProject}
+            className="flex items-center gap-1.5 text-xs font-semibold text-[#171717] dark:text-[#F5F5F5] hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-1 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Add Project</span>
+          </button>
+        </div>
+      )}
 
       {/* Project Members Modal */}
       {membersModalProject && (

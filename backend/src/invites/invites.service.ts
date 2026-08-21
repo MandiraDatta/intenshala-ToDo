@@ -48,6 +48,18 @@ export class InvitesService {
       } as any,
     });
 
+    // Fetch project name if projectId is provided
+    let projectName: string | undefined;
+    if (dto.projectId) {
+      const project = await this.prisma.project.findUnique({
+        where: { id: dto.projectId },
+        select: { name: true },
+      });
+      if (project) {
+        projectName = project.name;
+      }
+    }
+
     // Send email via Resend
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const inviteLink = `${baseUrl}/invite/accept?token=${token}`;
@@ -56,6 +68,7 @@ export class InvitesService {
       toEmail: targetEmail,
       inviterName: inviter?.fullName || inviter?.username || 'Workspace Owner',
       workspaceName: workspace.name,
+      projectName,
       inviteLink,
     });
 

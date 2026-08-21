@@ -17,6 +17,7 @@ import { Sun, Gear, Square } from "@phosphor-icons/react";
 import { useTheme, COLOR_MODES } from "@/context/ThemeContext";
 import { useUser } from "@/context/UserContext";
 import { authService } from "@/services/auth.service";
+import { useWorkspace } from "@/context/WorkspaceContext";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -25,6 +26,7 @@ export default function Sidebar() {
   const [activeSubmenu, setActiveSubmenu] = useState<"theme" | "color" | null>(null);
   const { theme, setTheme, colorMode, setColorMode } = useTheme();
   const { user } = useUser();
+  const { myRole } = useWorkspace();
   const profileRef = useRef<HTMLDivElement>(null);
 
   // Close profile dropdown when clicking outside
@@ -214,18 +216,20 @@ export default function Sidebar() {
                 </div>
 
                 {/* Settings */}
-                <div onMouseEnter={() => setActiveSubmenu(null)}>
-                  <Link
-                    href="/profile"
-                    onClick={() => setIsProfileOpen(false)}
-                    className="w-full flex items-center justify-between h-9 px-3 gap-2.5 rounded-2xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer text-left"
-                  >
-                    <Gear size={16} weight="bold" className="text-[#171717] dark:text-[#F5F5F5] shrink-0" />
-                    <span className="font-sans text-xs font-medium flex-1 text-[#171717] dark:text-[#F5F5F5]">
-                      Settings
-                    </span>
-                  </Link>
-                </div>
+                {myRole !== 'MEMBER' && (
+                  <div onMouseEnter={() => setActiveSubmenu(null)}>
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsProfileOpen(false)}
+                      className="w-full flex items-center justify-between h-9 px-3 gap-2.5 rounded-2xl hover:bg-[#F5F5F5] dark:hover:bg-[#262626] text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer text-left"
+                    >
+                      <Gear size={16} weight="bold" className="text-[#171717] dark:text-[#F5F5F5] shrink-0" />
+                      <span className="font-sans text-xs font-medium flex-1 text-[#171717] dark:text-[#F5F5F5]">
+                        Settings
+                      </span>
+                    </Link>
+                  </div>
+                )}
 
                 {/* Divider */}
                 <div className="w-full h-px bg-[#E5E5E5] dark:bg-[#2A2A2A] my-1" />

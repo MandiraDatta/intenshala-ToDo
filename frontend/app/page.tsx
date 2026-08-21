@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { IconBrandPrisma } from "@tabler/icons-react";
 import { RiGoogleFill } from "@remixicon/react";
 import { authService } from "@/services/auth.service";
 import { useUser } from "@/context/UserContext";
 import { useWorkspace } from "@/context/WorkspaceContext";
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const { refreshUser } = useUser();
   const { refreshWorkspaces } = useWorkspace();
@@ -20,13 +20,16 @@ export default function Home() {
   const [isRegister, setIsRegister] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  const searchParams = useSearchParams();
+  const redirectPath = searchParams.get("redirect") || "/dashboard";
+
   // Auto-redirect if user is already authenticated
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     if (token) {
-      router.push("/dashboard");
+      router.push(redirectPath);
     }
-  }, [router]);
+  }, [router, redirectPath]);
 
   const handleGuestLogin = async () => {
     setIsLoading("guest");
@@ -40,7 +43,7 @@ export default function Home() {
           await authService.login({ email: guestEmail, password: guestPass });
           await refreshUser();
           await refreshWorkspaces();
-          router.push("/dashboard");
+          router.push(redirectPath);
           return;
         } catch {
           // If saved guest login fails, create new guest below
@@ -64,7 +67,7 @@ export default function Home() {
 
       await refreshUser();
       await refreshWorkspaces();
-      router.push("/dashboard");
+      router.push(redirectPath);
     } catch (e: any) {
       setErrorMsg("Failed to initialize session with server.");
     } finally {
@@ -108,7 +111,7 @@ export default function Home() {
 
       await refreshUser();
       await refreshWorkspaces();
-      router.push("/dashboard");
+      router.push(redirectPath);
     } catch (err: any) {
       setErrorMsg(err?.response?.data?.message || "Authentication failed. Please check your inputs.");
     } finally {
@@ -251,5 +254,13 @@ export default function Home() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#FCFCFD] dark:bg-[#0A0A0A]" />}>
+      <HomeContent />
+    </Suspense>
   );
 }
