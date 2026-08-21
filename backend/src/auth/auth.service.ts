@@ -121,6 +121,74 @@ export class AuthService {
     };
   }
 
+  async googleLogin(dto: { email: string; fullName?: string; avatarUrl?: string }) {
+    const emailLower = dto.email.toLowerCase().trim();
+
+    let user = await this.prisma.user.findUnique({
+      where: { email: emailLower },
+    });
+
+    if (!user) {
+      const baseUsername = emailLower.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
+      const usernameLower = `${baseUsername}_g${Math.floor(Math.random() * 1000)}`;
+      const randomPassword = await bcrypt.hash(Date.now().toString() + Math.random().toString(), 10);
+
+      user = await this.prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            email: emailLower,
+            username: usernameLower,
+            fullName: dto.fullName || baseUsername,
+            avatarUrl: dto.avatarUrl,
+            passwordHash: randomPassword,
+          },
+        });
+
+        // Create default personal workspace
+        const slug = `${usernameLower}-workspace-${Date.now().toString().slice(-4)}`;
+        const workspace = await tx.workspace.create({
+          data: {
+            name: `${dto.fullName || baseUsername}'s Workspace`,
+            slug,
+          },
+        });
+
+        // Create OWNER membership
+        await tx.workspaceMember.create({
+          data: {
+            workspaceId: workspace.id,
+            userId: createdUser.id,
+            role: Role.OWNER,
+          },
+        });
+
+        return createdUser;
+      });
+    }
+
+    // Update lastLoginAt
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    const tokens = this.generateTokens(user.id, user.email);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        username: user.username,
+        title: user.title,
+        avatarUrl: user.avatarUrl,
+        theme: user.theme,
+        colorMode: user.colorMode,
+      },
+      ...tokens,
+    };
+  }
+
   async refreshToken(dto: RefreshTokenDto) {
     try {
       const payload = this.jwtService.verify(dto.refreshToken, {

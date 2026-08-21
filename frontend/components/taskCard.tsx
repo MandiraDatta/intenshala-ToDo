@@ -44,7 +44,7 @@ export default function TaskCard({
 
   return (
     <Link
-      href="/task"
+      href={`/task?id=${task.id}&title=${encodeURIComponent(task.title || "")}`}
       draggable={false}
       className={`w-full min-h-[7.125rem] flex flex-col justify-between gap-2 p-3 rounded-md border border-[#E5E5E5] dark:border-[#2A2A2A] bg-white dark:bg-[#171717] shadow-xs hover:border-[#D4D4D4] dark:hover:border-neutral-600 transition-all cursor-pointer ${className}`}
     >
