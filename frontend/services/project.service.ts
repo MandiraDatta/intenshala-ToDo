@@ -19,6 +19,11 @@ export const projectService = {
     return data;
   },
 
+  async getProjectById(workspaceId: string, projectId: string) {
+    const { data } = await apiClient.get(`/workspaces/${workspaceId}/projects/${projectId}`);
+    return data;
+  },
+
   async getFilterOptions(workspaceId: string) {
     const { data } = await apiClient.get(`/workspaces/${workspaceId}/projects/filters`);
     return data;

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -23,8 +23,14 @@ export class ProjectsController {
   }
 
   @Get()
-  findAll(@Param('workspaceId') workspaceId: string, @Query() query: ProjectQueryDto) {
-    return this.projectsService.findAll(workspaceId, query);
+  findAll(
+    @Param('workspaceId') workspaceId: string,
+    @Query() query: ProjectQueryDto,
+    @Request() req: any,
+  ) {
+    const requesterId: string = req.user?.id;
+    const requesterRole: string = req.workspaceMember?.role;
+    return this.projectsService.findAll(workspaceId, query, requesterId, requesterRole);
   }
 
   @Get('filters')

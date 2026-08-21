@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,10 +15,19 @@ import {
   Moon,
   Square,
   Palette,
+  Plus,
+  Building,
+  Mail,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import { useUser } from "@/context/UserContext";
 import { useTheme, COLOR_MODES, Theme, ColorMode } from "@/context/ThemeContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { inviteService } from "@/services/invite.service";
 
 type SettingsTab = "profile" | "theme" | "color";
 
@@ -29,6 +38,12 @@ export default function ProfilePage() {
 
   const { user, updateUser } = useUser();
   const { theme, setTheme, colorMode, setColorMode } = useTheme();
+  const { workspaces, activeWorkspace, setActiveWorkspace, createWorkspace, refreshWorkspaces } = useWorkspace();
+
+  // Create Workspace Modal States
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
 
   // Inline Editing States
   const [isEditingEmail, setIsEditingEmail] = useState(false);
@@ -40,6 +55,54 @@ export default function ProfilePage() {
 
   // Leave Workspace Modal State
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+
+  // Pending Invitations State
+  interface PendingInvite {
+    id: string;
+    token: string;
+    role: string;
+    createdAt: string;
+    expiresAt: string;
+    workspaceName: string;
+    inviterName: string;
+    projectName?: string | null;
+  }
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [loadingInvites, setLoadingInvites] = useState(false);
+  const [acceptingToken, setAcceptingToken] = useState<string | null>(null);
+  const [isInvitesOpen, setIsInvitesOpen] = useState(true);
+
+  const fetchPendingInvites = async () => {
+    setLoadingInvites(true);
+    try {
+      const data = await inviteService.getMyPendingInvites();
+      setPendingInvites(data || []);
+    } catch (err) {
+      console.error("Failed to fetch pending invites", err);
+    } finally {
+      setLoadingInvites(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingInvites();
+  }, []);
+
+  const handleAcceptInvite = async (token: string) => {
+    setAcceptingToken(token);
+    try {
+      const res = await inviteService.acceptInvite(token);
+      if (res.workspace?.id) {
+        localStorage.setItem("active_workspace_id", res.workspace.id);
+      }
+      await refreshWorkspaces();
+      await fetchPendingInvites();
+    } catch (err: any) {
+      console.error("Failed to accept invite", err);
+    } finally {
+      setAcceptingToken(null);
+    }
+  };
 
   // File Input Ref for Profile Picture
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,6 +143,22 @@ export default function ProfilePage() {
   const handleUsernameChange = (val: string) => {
     setUsernameInput(val);
     updateUser({ username: val });
+  };
+
+  const handleCreateWorkspaceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newWorkspaceName.trim()) return;
+    setIsCreatingWorkspace(true);
+    try {
+      const created = await createWorkspace(newWorkspaceName.trim());
+      setActiveWorkspace(created);
+      setNewWorkspaceName("");
+      setIsCreateModalOpen(false);
+    } catch (err) {
+      console.error("Failed to create workspace", err);
+    } finally {
+      setIsCreatingWorkspace(false);
+    }
   };
 
   return (
@@ -322,24 +401,160 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Workspace Access Section */}
-                <div className="flex flex-col gap-2 mt-2">
-                  <h2 className="text-xs sm:text-sm font-semibold text-[#171717] dark:text-[#F5F5F5]">
-                    Workspace access
-                  </h2>
-                  <div className="bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl p-4 flex items-center justify-between shadow-2xs">
-                    <span className="text-xs text-[#737373] dark:text-[#A3A3A3]">
-                      Remove yourself from the workspace
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setIsLeaveModalOpen(true)}
-                      className="h-7.5 px-3 bg-[#FEF2F2] dark:bg-[#450A0A]/40 hover:bg-[#FEE2E2] dark:hover:bg-[#450A0A]/60 text-[#DC2626] dark:text-rose-400 border border-[#FCA5A5]/30 dark:border-rose-900/40 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
-                    >
-                      Leave Workspace
-                    </button>
+                {/* Pending Invitations Section */}
+                  <div className="flex flex-col gap-2 mt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-xs sm:text-sm font-semibold text-[#171717] dark:text-[#F5F5F5]">
+                          Pending Invitations
+                        </h2>
+                        {pendingInvites.length > 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            {pendingInvites.length} Pending
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsInvitesOpen(!isInvitesOpen)}
+                        className="text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors p-1 cursor-pointer"
+                      >
+                        {isInvitesOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    </div>
+
+                    {isInvitesOpen && (
+                      <div className="flex flex-col gap-2">
+                        {loadingInvites ? (
+                          <div className="bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl p-4 flex items-center justify-center gap-2 text-xs text-[#737373] dark:text-[#A3A3A3]">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Checking invitations...</span>
+                          </div>
+                        ) : pendingInvites.length === 0 ? (
+                          <div className="bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl p-4 text-xs text-[#737373] dark:text-[#A3A3A3] flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-neutral-400" />
+                            <span>No pending invitations for your email.</span>
+                          </div>
+                        ) : (
+                          pendingInvites.map((inv) => (
+                            <div
+                              key={inv.id}
+                              className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl p-4 flex items-center justify-between shadow-2xs"
+                            >
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs sm:text-sm font-semibold text-[#171717] dark:text-[#F5F5F5]">
+                                    {inv.workspaceName}
+                                  </span>
+                                  {inv.projectName && (
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300">
+                                      Project: {inv.projectName}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[11px] text-[#737373] dark:text-[#A3A3A3]">
+                                  Invited by <strong className="text-neutral-900 dark:text-neutral-200">{inv.inviterName}</strong> • Role: {inv.role}
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleAcceptInvite(inv.token)}
+                                disabled={acceptingToken === inv.token}
+                                className="h-8 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-xs flex items-center gap-1.5 disabled:opacity-50 shrink-0"
+                              >
+                                {acceptingToken === inv.token ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <span>Accepting...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Accept Invitation</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
+
+                  {/* Workspace Access Section */}
+                  <div className="flex flex-col gap-2 mt-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xs sm:text-sm font-semibold text-[#171717] dark:text-[#F5F5F5]">
+                        Workspace access
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 h-7 px-2.5 bg-[#171717] dark:bg-[#F5F5F5] hover:bg-[#333333] dark:hover:bg-[#E5E5E5] text-white dark:text-black rounded-md text-xs font-semibold transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Create Workspace</span>
+                      </button>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {workspaces.length === 0 ? (
+                        <div className="bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl p-4 text-xs text-[#737373] dark:text-[#A3A3A3]">
+                          No active workspaces found.
+                        </div>
+                      ) : (
+                        workspaces.map((ws) => {
+                          const isActive = activeWorkspace?.id === ws.id;
+                          return (
+                            <div
+                              key={ws.id}
+                              className="bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl p-4 flex items-center justify-between shadow-2xs"
+                            >
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs sm:text-sm font-semibold text-[#171717] dark:text-[#F5F5F5]">
+                                    {ws.name}
+                                  </span>
+                                  {isActive && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60">
+                                      Active Org
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[11px] text-[#737373] dark:text-[#A3A3A3]">
+                                  Role: {ws.isOwner ? "Owner" : ws.role || "Member"} • {ws.memberCount || 1} member(s)
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {!isActive && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveWorkspace(ws)}
+                                    className="h-7.5 px-3 bg-[#F5F5F5] dark:bg-[#262626] hover:bg-[#EAEAEA] dark:hover:bg-[#333333] text-[#171717] dark:text-[#F5F5F5] border border-[#E5E5E5] dark:border-[#333333] rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
+                                  >
+                                    Switch to Org
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!isActive) {
+                                      setActiveWorkspace(ws);
+                                    }
+                                    setIsLeaveModalOpen(true);
+                                  }}
+                                  className="h-7.5 px-3 bg-[#FEF2F2] dark:bg-[#450A0A]/40 hover:bg-[#FEE2E2] dark:hover:bg-[#450A0A]/60 text-[#DC2626] dark:text-rose-400 border border-[#FCA5A5]/30 dark:border-rose-900/40 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
+                                >
+                                  Leave Workspace
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
               </>
             )}
 
@@ -468,6 +683,65 @@ export default function ProfilePage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Dialog Modal for Creating Workspace */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+          <form
+            onSubmit={handleCreateWorkspaceSubmit}
+            className="w-full max-w-sm bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl shadow-2xl p-5 flex flex-col gap-4 animate-in zoom-in-95 duration-150"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-950/60 flex items-center justify-center shrink-0">
+                <Building className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-[#171717] dark:text-[#F5F5F5]">
+                  Create New Workspace
+                </h3>
+                <p className="text-xs text-[#737373] dark:text-[#A3A3A3] mt-0.5">
+                  Enter a name for your new organization/workspace.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[#171717] dark:text-[#F5F5F5]">
+                Workspace Name
+              </label>
+              <input
+                type="text"
+                required
+                value={newWorkspaceName}
+                onChange={(e) => setNewWorkspaceName(e.target.value)}
+                placeholder="e.g. Acme Corp, Engineering, Marketing"
+                className="h-8 px-3 bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] rounded-md text-xs text-[#171717] dark:text-[#F5F5F5] outline-none focus:border-blue-500 transition-colors"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#F0F0F0] dark:border-[#262626]">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateModalOpen(false);
+                  setNewWorkspaceName("");
+                }}
+                className="h-8 px-3 rounded-md text-xs font-medium text-[#171717] dark:text-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:bg-[#262626] transition-colors cursor-pointer border border-[#E5E5E5] dark:border-[#2A2A2A]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isCreatingWorkspace || !newWorkspaceName.trim()}
+                className="h-8 px-3 rounded-md text-xs font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5"
+              >
+                {isCreatingWorkspace ? "Creating..." : "Create Workspace"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

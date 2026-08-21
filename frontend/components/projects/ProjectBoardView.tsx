@@ -9,6 +9,7 @@ interface ProjectBoardViewProps {
   visibleFields: VisibleFields;
   onAddProject: (defaultStatus?: StatusType) => void;
   onDeleteProject?: (id: string) => void;
+  onEditProject?: (project: Project) => void;
   onUpdateStatus?: (id: string, newStatus: StatusType) => void;
 }
 
@@ -17,6 +18,7 @@ export default function ProjectBoardView({
   visibleFields,
   onAddProject,
   onDeleteProject,
+  onEditProject,
   onUpdateStatus,
 }: ProjectBoardViewProps) {
   const columns: { id: StatusType; title: string; color: string }[] = [
@@ -83,6 +85,7 @@ export default function ProjectBoardView({
                     project={project}
                     visibleFields={visibleFields}
                     onDeleteProject={onDeleteProject}
+                    onEditProject={onEditProject}
                     onUpdateStatus={onUpdateStatus}
                   />
                 ))

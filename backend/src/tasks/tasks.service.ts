@@ -53,13 +53,26 @@ export class TasksService {
     return this.findOne(workspaceId, created.id);
   }
 
-  async findAll(workspaceId: string, query: TaskQueryDto) {
+  async findAll(workspaceId: string, query: TaskQueryDto, requesterId?: string, requesterRole?: string) {
     const { page = 1, limit = 50, search, projectId, status, priority, memberId, teamId, labelId, reporterId, dueDate, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
     const where: Prisma.TaskWhereInput = {
       workspaceId,
       deletedAt: null,
     };
+
+    // RBAC: Members can only see tasks they are assigned to, reporter of, or if they are members of the parent project
+    if (requesterRole === 'MEMBER' && requesterId) {
+      where.AND = [
+        {
+          OR: [
+            { members: { some: { userId: requesterId } } },
+            { reporterId: requesterId },
+            { project: { members: { some: { userId: requesterId } } } },
+          ],
+        },
+      ];
+    }
 
     if (projectId) {
       where.projectId = projectId;

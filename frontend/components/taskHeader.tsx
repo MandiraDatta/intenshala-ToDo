@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Search, Columns3, Filter, Plus, List, Grid2x2, Check, Command } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
+import { useWorkspace } from "@/context/WorkspaceContext";
+import { inviteService } from "@/services/invite.service";
 
 import FilterMenu from "./projects/FilterMenu";
 import { FILTER_CONFIGS } from "./projects/data";
@@ -46,9 +48,57 @@ export default function TaskHeader({
   activeFilters = {},
   onSelectFilter,
 }: TaskHeaderProps) {
+  const { activeWorkspace } = useWorkspace();
   const [isFieldsOpen, setIsFieldsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [dynamicFilterConfigs, setDynamicFilterConfigs] = useState<FilterConfig[]>(filterConfigs);
+
+  // Load dynamic members from current active workspace
+  useEffect(() => {
+    setDynamicFilterConfigs(filterConfigs);
+  }, [filterConfigs]);
+
+  useEffect(() => {
+    if (!activeWorkspace?.id || !isFilterOpen) return;
+
+    inviteService
+      .getWorkspaceMembers(activeWorkspace.id)
+      .then((members) => {
+        if (Array.isArray(members)) {
+          const memberOptions = [
+            { id: "All Members", label: "All Members" },
+            ...members.map((m: any) => {
+              const name = m.fullName || m.username || m.user?.fullName || m.user?.username || m.email || "Member";
+              return { id: name, label: name };
+            }),
+          ];
+
+          const reporterOptions = [
+            { id: "All Reporters", label: "All Reporters" },
+            ...members.map((m: any) => {
+              const name = m.fullName || m.username || m.user?.fullName || m.user?.username || m.email || "Reporter";
+              return { id: name, label: name };
+            }),
+          ];
+
+          setDynamicFilterConfigs((prev) =>
+            prev.map((config) => {
+              if (config.key === "members") {
+                return { ...config, options: memberOptions };
+              }
+              if (config.key === "reporter") {
+                return { ...config, options: reporterOptions };
+              }
+              return config;
+            })
+          );
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch workspace members for filters:", err);
+      });
+  }, [activeWorkspace?.id, isFilterOpen]);
 
   // Synchronize local activeTab state with external viewMode prop
   const [activeTab, setActiveTab] = useState<"board" | "list">(viewMode);
@@ -277,7 +327,7 @@ export default function TaskHeader({
             <Filter className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5]" />
           </button>
           <FilterMenu
-            filters={filterConfigs}
+            filters={dynamicFilterConfigs}
             activeFilters={activeFilters}
             onSelectFilter={onSelectFilter || (() => {})}
             isOpen={isFilterOpen}

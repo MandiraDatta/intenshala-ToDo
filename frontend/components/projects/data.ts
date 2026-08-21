@@ -111,10 +111,6 @@ export const FILTER_CONFIGS: FilterConfig[] = [
     icon: Users,
     options: [
       { id: "All Members", label: "All Members" },
-      { id: "Dexter", label: "Dexter" },
-      { id: "John", label: "John" },
-      { id: "Sarah", label: "Sarah" },
-      { id: "Ankit Datta", label: "Ankit Datta" },
     ],
   },
   {
@@ -163,10 +159,6 @@ export const FILTER_CONFIGS: FilterConfig[] = [
     icon: User,
     options: [
       { id: "All Reporters", label: "All Reporters" },
-      { id: "Dexter", label: "Dexter" },
-      { id: "John", label: "John" },
-      { id: "Sarah", label: "Sarah" },
-      { id: "Ankit Datta", label: "Ankit Datta" },
     ],
   },
 ];

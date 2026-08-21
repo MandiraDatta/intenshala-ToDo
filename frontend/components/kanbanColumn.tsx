@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
-import { GripVertical, Plus, SignalHigh, SignalMedium, SignalLow, MoreHorizontal, ChevronDown } from "lucide-react";
+import { GripVertical, Plus, SignalHigh, SignalMedium, SignalLow, MoreHorizontal, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import TaskCard from "./taskCard";
 import { VisibleFields } from "./taskHeader";
+import MemberAvatarStack from "./common/MemberAvatarStack";
 
 export interface Task {
   id: string;
   title: string;
   assignee?: { name: string; avatar?: string } | string;
+  members?: any[];
   dueDate?: string;
   priority?: string;
   status?: string;
@@ -26,6 +29,8 @@ interface KanbanColumnProps {
   onAddTask?: (columnId?: string) => void;
   onMoreOptions?: (columnId?: string) => void;
   onUpdateTaskStatus?: (taskId: string, targetColumnId: string) => void;
+  onEditTask?: (task: Task) => void;
+  onDeleteTask?: (taskId: string) => void;
   renderTaskCard?: (task: Task) => React.ReactNode;
   className?: string;
 }
@@ -40,11 +45,37 @@ export default function KanbanColumn({
   onAddTask,
   onMoreOptions,
   onUpdateTaskStatus,
+  onEditTask,
+  onDeleteTask,
   renderTaskCard,
   className = "",
 }: KanbanColumnProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [activeMenuTaskId, setActiveMenuTaskId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActiveMenuTaskId(null);
+        setMenuPosition(null);
+      }
+    };
+    const handleScroll = () => {
+      setActiveMenuTaskId(null);
+      setMenuPosition(null);
+    };
+    if (activeMenuTaskId) {
+      document.addEventListener("mousedown", handleClickOutside);
+      window.addEventListener("scroll", handleScroll, true);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [activeMenuTaskId]);
 
   const handleAddTask = () => {
     if (onAddTask) {
@@ -198,9 +229,21 @@ export default function KanbanColumn({
 
                         {/* Members */}
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-amber-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-xs">
-                            {assigneeName.charAt(0)}
-                          </div>
+                          <MemberAvatarStack
+                            taskId={task.id}
+                            members={
+                              Array.isArray(task.members) && task.members.length > 0
+                                ? task.members.map((m: any) => ({
+                                    id: m.id || m.userId,
+                                    name: m.fullName || m.name || m.username || "Member",
+                                    avatar: m.avatarUrl || m.avatar,
+                                    initials: (m.fullName || m.username || "M")[0].toUpperCase(),
+                                  }))
+                                : assigneeName
+                                ? [{ id: assigneeName, name: assigneeName, initials: assigneeName.charAt(0).toUpperCase() }]
+                                : []
+                            }
+                          />
                         </div>
 
                         {/* Due Date */}
@@ -208,18 +251,77 @@ export default function KanbanColumn({
                           {dueDate}
                         </div>
 
-                        {/* Actions */}
+                        {/* Actions — only shown when edit/delete handlers are available */}
                         <div className="flex items-center justify-end shrink-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onMoreOptions?.(id);
-                            }}
-                            className="text-[#737373] dark:text-[#A3A3A3] hover:text-black dark:hover:text-[#F5F5F5] transition-colors p-1 cursor-pointer"
-                          >
-                            <MoreHorizontal className="w-4 h-4 text-[#737373] dark:text-[#A3A3A3]" />
-                          </button>
+                          {(onEditTask || onDeleteTask) && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (activeMenuTaskId === task.id) {
+                                    setActiveMenuTaskId(null);
+                                    setMenuPosition(null);
+                                  } else {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    setActiveMenuTaskId(task.id);
+                                    setMenuPosition({
+                                      top: rect.bottom + 4,
+                                      left: rect.right - 128,
+                                    });
+                                  }
+                                }}
+                                className="text-[#737373] dark:text-[#A3A3A3] hover:text-black dark:hover:text-[#F5F5F5] transition-colors p-1 cursor-pointer"
+                                title="Actions"
+                              >
+                                <MoreHorizontal className="w-4 h-4 text-[#737373] dark:text-[#A3A3A3]" />
+                              </button>
+
+                              {activeMenuTaskId === task.id && menuPosition && typeof window !== "undefined" && createPortal(
+                                <div
+                                  ref={menuRef}
+                                  style={{
+                                    position: "fixed",
+                                    top: `${menuPosition.top}px`,
+                                    left: `${menuPosition.left}px`,
+                                  }}
+                                  className="w-32 bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-lg shadow-2xl z-[99999] p-1 flex flex-col animate-in fade-in zoom-in-95 duration-100"
+                                >
+                                  {onEditTask && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEditTask(task);
+                                        setActiveMenuTaskId(null);
+                                        setMenuPosition(null);
+                                      }}
+                                      className="flex items-center gap-2 px-2 py-1.5 text-xs text-[#171717] dark:text-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded transition-colors w-full text-left cursor-pointer font-medium"
+                                    >
+                                      <Pencil size={12} />
+                                      <span>Edit</span>
+                                    </button>
+                                  )}
+                                  {onDeleteTask && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDeleteTask(task.id);
+                                        setActiveMenuTaskId(null);
+                                        setMenuPosition(null);
+                                      }}
+                                      className="flex items-center gap-2 px-2 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded transition-colors w-full text-left cursor-pointer font-medium"
+                                    >
+                                      <Trash2 size={12} />
+                                      <span>Delete</span>
+                                    </button>
+                                  )}
+                                </div>,
+                                document.body
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

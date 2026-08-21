@@ -17,6 +17,8 @@ export interface WorkspaceItem {
 interface WorkspaceContextType {
   workspaces: WorkspaceItem[];
   activeWorkspace: WorkspaceItem | null;
+  /** Current user's role in the active workspace: 'OWNER' | 'ADMIN' | 'MEMBER' */
+  myRole: 'OWNER' | 'ADMIN' | 'MEMBER' | null;
   loading: boolean;
   setActiveWorkspace: (workspace: WorkspaceItem) => void;
   refreshWorkspaces: () => Promise<void>;
@@ -86,11 +88,14 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     return created;
   };
 
+  const myRole = (activeWorkspace?.role ?? null) as 'OWNER' | 'ADMIN' | 'MEMBER' | null;
+
   return (
     <WorkspaceContext.Provider
       value={{
         workspaces,
         activeWorkspace,
+        myRole,
         loading,
         setActiveWorkspace,
         refreshWorkspaces: fetchWorkspaces,

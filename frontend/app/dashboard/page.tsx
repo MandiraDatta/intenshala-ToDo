@@ -4,15 +4,24 @@ import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import TaskHeader, { VisibleFields } from "@/components/taskHeader";
 import KanbanColumn, { Task } from "@/components/kanbanColumn";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { taskService } from "@/services/task.service";
+import { projectService } from "@/services/project.service";
 import { preferenceService } from "@/services/preference.service";
+import InviteModal from "@/components/common/InviteModal";
+import { useRole } from "@/hooks/useRole";
 
-export default function Dashboard() {
-  const { activeWorkspace } = useWorkspace();
+function DashboardContent() {
+  const { activeWorkspace, myRole } = useWorkspace();
+  const { canDeleteTask, canEditTask, isMember } = useRole();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const projectIdParam = searchParams.get("projectId");
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [pageTitle, setPageTitle] = useState("Tasks");
 
   // View mode state: 'board' vs 'list'
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
@@ -33,6 +42,9 @@ export default function Dashboard() {
   // State to manage Add Task modal visibility and targeted column ID
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [activeColumnId, setActiveColumnId] = useState<string | null>("todo");
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [currentProject, setCurrentProject] = useState<any>(null);
 
   // Form input states
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -63,6 +75,49 @@ export default function Dashboard() {
       .catch(() => { });
   }, [activeWorkspace?.id]);
 
+  // Auto-redirect to first project if no projectIdParam is present (ensuring tasks always belong to a project)
+  useEffect(() => {
+    if (!activeWorkspace?.id) return;
+    if (!projectIdParam) {
+      projectService
+        .getProjects(activeWorkspace.id)
+        .then((res) => {
+          const projectsList = res.data || res || [];
+          if (Array.isArray(projectsList) && projectsList.length > 0) {
+            router.replace(`/dashboard?projectId=${projectsList[0].id}`);
+          } else {
+            router.replace("/projects");
+          }
+        })
+        .catch(() => {
+          router.replace("/projects");
+        });
+    }
+  }, [activeWorkspace?.id, projectIdParam, router]);
+
+  // Fetch project details to show project name in header title if projectIdParam is set
+  useEffect(() => {
+    if (activeWorkspace?.id && projectIdParam) {
+      projectService
+        .getProjectById(activeWorkspace.id, projectIdParam)
+        .then((proj) => {
+          setCurrentProject(proj);
+          if (proj?.name) {
+            setPageTitle(proj.name);
+          } else {
+            setPageTitle("Project Tasks");
+          }
+        })
+        .catch(() => {
+          setCurrentProject(null);
+          setPageTitle("Project Tasks");
+        });
+    } else {
+      setCurrentProject(null);
+      setPageTitle("Tasks");
+    }
+  }, [activeWorkspace?.id, projectIdParam]);
+
   const handleViewModeChange = (mode: "board" | "list") => {
     setViewMode(mode);
     if (activeWorkspace?.id) {
@@ -89,6 +144,7 @@ export default function Dashboard() {
     try {
       const res = await taskService.getTasks(activeWorkspace.id, {
         search: searchQuery.trim() || undefined,
+        projectId: projectIdParam || undefined,
       });
       const items = res.data || res || [];
 
@@ -98,13 +154,23 @@ export default function Dashboard() {
       const onHoldTasks: Task[] = [];
 
       (Array.isArray(items) ? items : []).forEach((item: any) => {
+        if (projectIdParam && item.projectId && item.projectId !== projectIdParam) {
+          return;
+        }
+
         const formattedTask: Task = {
           id: item.id,
           title: item.title,
           status: item.status || "TODO",
           priority: item.priority || "MEDIUM",
           dueDate: item.dueDate ? new Date(item.dueDate).toLocaleDateString("en-US", { day: "numeric", month: "short" }) : undefined,
-          assignee: item.members?.[0]?.user?.fullName || item.createdBy?.fullName,
+          members: Array.isArray(item.members) ? item.members.map((m: any) => ({
+            id: m.id || m.userId,
+            name: m.fullName || m.username || "Member",
+            avatar: m.avatarUrl || m.avatar,
+            initials: (m.fullName || m.username || "M")[0].toUpperCase(),
+          })) : [],
+          assignee: item.members?.[0]?.fullName || item.createdBy?.fullName,
           tags: item.labels?.map((l: any) => l.label?.name || l.name) || [],
         };
 
@@ -127,7 +193,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [activeWorkspace?.id, searchQuery]);
+  }, [activeWorkspace?.id, searchQuery, projectIdParam]);
 
   useEffect(() => {
     fetchTasks();
@@ -153,10 +219,39 @@ export default function Dashboard() {
 
   const handleCloseModal = () => {
     setIsAddTaskOpen(false);
+    setEditingTaskId(null);
     setNewTaskTitle("");
     setNewTaskAssignee("");
     setNewTaskDueDate("");
     setNewTaskTag("");
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTaskId(task.id);
+    setNewTaskTitle(task.title);
+    const assigneeName = typeof task.assignee === "string" ? task.assignee : task.assignee?.name || "";
+    setNewTaskAssignee(assigneeName);
+    setNewTaskDueDate(task.dueDate || "");
+    setNewTaskTag(task.tags?.[0] || "");
+    const currentCol = columns.find((c) => c.tasks.some((t) => t.id === task.id));
+    if (currentCol) setActiveColumnId(currentCol.id);
+    setIsAddTaskOpen(true);
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!activeWorkspace?.id) return;
+    setColumns((prevCols) =>
+      prevCols.map((col) => ({
+        ...col,
+        tasks: col.tasks.filter((t) => t.id !== taskId),
+      }))
+    );
+    try {
+      await taskService.deleteTask(activeWorkspace.id, taskId);
+      await fetchTasks();
+    } catch (err) {
+      console.error("Failed to delete task", err);
+    }
   };
 
   const handleCreateTask = async (e: React.FormEvent) => {
@@ -171,43 +266,59 @@ export default function Dashboard() {
       "on-hold": "ON_HOLD",
     };
 
-    const formattedDueDateStr = newTaskDueDate
-      ? new Date(newTaskDueDate).toLocaleDateString("en-US", { day: "numeric", month: "short" })
-      : undefined;
+    if (editingTaskId) {
+      if (activeWorkspace?.id) {
+        try {
+          await taskService.updateTask(activeWorkspace.id, editingTaskId, {
+            title: newTaskTitle.trim(),
+            status: statusMap[targetColId] || "TODO",
+            priority: "MEDIUM",
+            dueDate: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
+          });
+          await fetchTasks();
+        } catch (err) {
+          console.error("Failed to update task:", err);
+        }
+      }
+    } else {
+      const formattedDueDateStr = newTaskDueDate
+        ? new Date(newTaskDueDate).toLocaleDateString("en-US", { day: "numeric", month: "short" })
+        : undefined;
 
-    // Optimistically create task locally so user gets instant visual feedback
-    const tempId = `temp-${Date.now()}`;
-    const newTaskObj: Task = {
-      id: tempId,
-      title: newTaskTitle.trim(),
-      status: statusMap[targetColId] || "TODO",
-      priority: "MEDIUM",
-      dueDate: formattedDueDateStr,
-      assignee: newTaskAssignee.trim() || undefined,
-      tags: newTaskTag.trim() ? [newTaskTag.trim()] : [],
-    };
+      const tempId = `temp-${Date.now()}`;
+      const newTaskObj: Task = {
+        id: tempId,
+        title: newTaskTitle.trim(),
+        status: statusMap[targetColId] || "TODO",
+        priority: "MEDIUM",
+        dueDate: formattedDueDateStr,
+        assignee: newTaskAssignee.trim() || undefined,
+        tags: newTaskTag.trim() ? [newTaskTag.trim()] : [],
+      };
 
-    setColumns((prevCols) =>
-      prevCols.map((col) =>
-        col.id === targetColId ? { ...col, tasks: [...col.tasks, newTaskObj] } : col
-      )
-    );
+      setColumns((prevCols) =>
+        prevCols.map((col) =>
+          col.id === targetColId ? { ...col, tasks: [...col.tasks, newTaskObj] } : col
+        )
+      );
 
-    handleCloseModal();
-
-    if (activeWorkspace?.id) {
-      try {
-        await taskService.createTask(activeWorkspace.id, {
-          title: newTaskTitle.trim(),
-          status: statusMap[targetColId] || "TODO",
-          priority: "MEDIUM",
-          dueDate: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
-        });
-        await fetchTasks();
-      } catch (err) {
-        console.error("Failed to create task on backend:", err);
+      if (activeWorkspace?.id) {
+        try {
+          await taskService.createTask(activeWorkspace.id, {
+            title: newTaskTitle.trim(),
+            status: statusMap[targetColId] || "TODO",
+            priority: "MEDIUM",
+            dueDate: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : undefined,
+            projectId: projectIdParam || undefined,
+          });
+          await fetchTasks();
+        } catch (err) {
+          console.error("Failed to create task on backend:", err);
+        }
       }
     }
+
+    handleCloseModal();
   };
 
   const handleUpdateTaskStatus = async (taskId: string, targetColId: string) => {
@@ -271,6 +382,7 @@ export default function Dashboard() {
           <div className="h-full w-full gap-5 flex flex-col">
             {/* Tasks Header Component */}
             <TaskHeader
+              title={pageTitle}
               viewMode={viewMode}
               onViewModeChange={handleViewModeChange}
               visibleFields={visibleFields}
@@ -296,6 +408,8 @@ export default function Dashboard() {
                     isListMode={false}
                     onAddTask={() => handleAddTask(col.id)}
                     onUpdateTaskStatus={handleUpdateTaskStatus}
+                    onEditTask={handleEditTask}
+                    onDeleteTask={handleDeleteTask}
                     onMoreOptions={() => { }}
                   />
                 ))}
@@ -312,6 +426,8 @@ export default function Dashboard() {
                     isListMode={true}
                     onAddTask={() => handleAddTask(col.id)}
                     onUpdateTaskStatus={handleUpdateTaskStatus}
+                    onEditTask={handleEditTask}
+                    onDeleteTask={handleDeleteTask}
                     onMoreOptions={() => { }}
                   />
                 ))}
@@ -330,7 +446,7 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between border-b border-[#E5E5E5] dark:border-[#2A2A2A] pb-3">
               <h3 className="text-sm font-semibold text-[#171717] dark:text-[#F5F5F5]">
-                Add Task to "{columns.find((c) => c.id === (activeColumnId || "todo"))?.title || "To Do"}"
+                {editingTaskId ? "Edit Task" : `Add Task to "${columns.find((c) => c.id === (activeColumnId || "todo"))?.title || "To Do"}"`}
               </h3>
               <button
                 onClick={handleCloseModal}
@@ -361,13 +477,34 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-[#171717] dark:text-[#F5F5F5]">Assignee</label>
-                  <input
-                    type="text"
+                  <select
                     value={newTaskAssignee}
-                    onChange={(e) => setNewTaskAssignee(e.target.value)}
-                    placeholder="Enter assignee name..."
-                    className="w-full px-3 py-2 text-xs border border-[#E5E5E5] dark:border-[#2A2A2A] bg-white dark:bg-[#111111] text-[#171717] dark:text-[#F5F5F5] placeholder:text-[#A3A3A3] dark:placeholder:text-[#737373] rounded focus:outline-none focus:border-[#171717] dark:focus:border-[#A3A3A3]"
-                  />
+                    onChange={(e) => {
+                      if (e.target.value === "__INVITE__") {
+                        setIsInviteModalOpen(true);
+                      } else {
+                        setNewTaskAssignee(e.target.value);
+                      }
+                    }}
+                    className="w-full px-3 py-2 text-xs border border-[#E5E5E5] dark:border-[#2A2A2A] bg-white dark:bg-[#111111] text-[#171717] dark:text-[#F5F5F5] rounded focus:outline-none focus:border-[#171717] dark:focus:border-[#A3A3A3] cursor-pointer"
+                  >
+                    <option value="">Select Assignee (Project Member)</option>
+                    {currentProject?.members && currentProject.members.length > 0 ? (
+                      currentProject.members.map((m: any) => {
+                        const name = m.name || m.fullName || m.username || "Member";
+                        return (
+                          <option key={m.id || name} value={name}>
+                            {name}
+                          </option>
+                        );
+                      })
+                    ) : null}
+                    {myRole !== 'MEMBER' && (
+                      <option value="__INVITE__" className="font-semibold text-blue-600">
+                        + Invite New Member...
+                      </option>
+                    )}
+                  </select>
                 </div>
 
                 <div className="flex flex-col gap-1">
@@ -405,12 +542,33 @@ export default function Dashboard() {
                 type="submit"
                 className="px-3 py-1.5 text-xs font-medium text-white dark:text-black bg-[#171717] dark:bg-[#F5F5F5] rounded hover:bg-[#262626] dark:hover:bg-neutral-200 transition-colors cursor-pointer"
               >
-                Add Task
+                {editingTaskId ? "Save Changes" : "Add Task"}
               </button>
             </div>
           </form>
         </div>
       )}
+      {isInviteModalOpen && (
+        <InviteModal
+          isOpen={isInviteModalOpen}
+          onClose={() => setIsInviteModalOpen(false)}
+          projectId={projectIdParam || undefined}
+        />
+      )}
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full h-screen flex items-center justify-center text-xs text-neutral-400 font-medium">
+          Loading dashboard...
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
   );
 }

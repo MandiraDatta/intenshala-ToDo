@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import {
   SignalHigh,
@@ -12,13 +13,16 @@ import {
   Tag,
   Users,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { Project, VisibleFields, StatusType } from "./types";
+import MemberAvatarStack from "@/components/common/MemberAvatarStack";
 
 interface ProjectCardProps {
   project: Project;
   visibleFields: VisibleFields;
   onDeleteProject?: (id: string) => void;
+  onEditProject?: (project: Project) => void;
   onUpdateStatus?: (id: string, newStatus: StatusType) => void;
 }
 
@@ -26,6 +30,7 @@ export default function ProjectCard({
   project,
   visibleFields,
   onDeleteProject,
+  onEditProject,
 }: ProjectCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -85,7 +90,12 @@ export default function ProjectCard({
       {/* Header: Project Name & Actions Menu */}
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold text-xs text-[#171717] dark:text-[#F5F5F5] leading-snug">
-          {project.name}
+          <Link
+            href={`/dashboard?projectId=${project.id}`}
+            className="hover:underline hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            {project.name}
+          </Link>
         </h3>
         <div className="relative shrink-0">
           <button
@@ -98,6 +108,17 @@ export default function ProjectCard({
           </button>
           {isMenuOpen && (
             <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-lg shadow-xl z-50 p-1 flex flex-col">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onEditProject) onEditProject(project);
+                  setIsMenuOpen(false);
+                }}
+                className="flex items-center gap-2 px-2 py-1.5 text-xs text-[#171717] dark:text-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded transition-colors w-full text-left cursor-pointer font-medium"
+              >
+                <Pencil size={12} />
+                <span>Edit</span>
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -125,27 +146,7 @@ export default function ProjectCard({
       <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#F0F0F0] dark:border-[#262626]">
         {/* Members */}
         {visibleFields.members && (
-          <div className="flex items-center -space-x-1.5">
-            {project.members.map((member, i) => (
-              <div
-                key={i}
-                className="w-6 h-6 rounded-full border-2 border-white dark:border-[#171717] overflow-hidden bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0"
-                title={member.name}
-              >
-                {member.avatar ? (
-                  <Image
-                    src={member.avatar}
-                    alt={member.name}
-                    width={24}
-                    height={24}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  member.initials || member.name[0]
-                )}
-              </div>
-            ))}
-          </div>
+          <MemberAvatarStack members={project.members} />
         )}
 
         {/* Due Date */}

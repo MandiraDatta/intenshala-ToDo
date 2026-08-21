@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { SignalLow, SignalMedium, SignalHigh, Calendar, Tag, MoreHorizontal } from "lucide-react";
 import { VisibleFields } from "./taskHeader";
+import MemberAvatarStack from "@/components/common/MemberAvatarStack";
 
 export interface TaskCardProps {
   task: {
@@ -10,6 +11,7 @@ export interface TaskCardProps {
     title: string;
     priority?: string;
     assignee?: string | { name: string; avatar?: string };
+    members?: any[];
     dueDate?: string;
     tags?: string[];
   };
@@ -38,7 +40,7 @@ export default function TaskCard({
 
   const { priority: showPriority, members: showMembers, dueDate: showDueDate, labels: showLabels } = visibleFields;
 
-  const showMiddleRow = (showMembers && !!assigneeName) || showPriority || (showDueDate && !!dueDate);
+  const showMiddleRow = showMembers || showPriority || (showDueDate && !!dueDate);
 
   return (
     <Link
@@ -68,15 +70,22 @@ export default function TaskCard({
       {showMiddleRow && (
         <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
           {/* Members / Assignee */}
-          {showMembers && assigneeName && (
-            <div className="flex items-center gap-1.5 min-w-0">
-              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-[9px] font-bold text-white shadow-xs shrink-0">
-                {assigneeName.charAt(0)}
-              </div>
-              <span className="font-sans text-[11px] font-medium text-[#404040] dark:text-[#A3A3A3] truncate">
-                {assigneeName}
-              </span>
-            </div>
+          {showMembers && (
+            <MemberAvatarStack
+              taskId={task.id}
+              members={
+                Array.isArray(task.members) && task.members.length > 0
+                  ? task.members.map((m: any) => ({
+                      id: m.id || m.userId,
+                      name: m.fullName || m.name || m.username || "Member",
+                      avatar: m.avatarUrl || m.avatar,
+                      initials: (m.fullName || m.username || "M")[0].toUpperCase(),
+                    }))
+                  : assigneeName
+                  ? [{ id: assigneeName, name: assigneeName, initials: assigneeName.charAt(0).toUpperCase() }]
+                  : []
+              }
+            />
           )}
 
           <div className="flex items-center gap-1.5 ml-auto">

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -23,8 +23,14 @@ export class TasksController {
   }
 
   @Get()
-  findAll(@Param('workspaceId') workspaceId: string, @Query() query: TaskQueryDto) {
-    return this.tasksService.findAll(workspaceId, query);
+  findAll(
+    @Param('workspaceId') workspaceId: string,
+    @Query() query: TaskQueryDto,
+    @Request() req: any,
+  ) {
+    const requesterId: string = req.user?.id;
+    const requesterRole: string = req.workspaceMember?.role;
+    return this.tasksService.findAll(workspaceId, query, requesterId, requesterRole);
   }
 
   @Get(':taskId')

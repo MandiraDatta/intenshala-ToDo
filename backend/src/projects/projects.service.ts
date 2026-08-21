@@ -13,52 +13,122 @@ export class ProjectsService {
   constructor(private prisma: PrismaService) {}
 
   async create(workspaceId: string, createdById: string, dto: CreateProjectDto) {
+    let validUserId = createdById;
+    if (validUserId) {
+      const userExists = await this.prisma.user.findUnique({ where: { id: validUserId } });
+      if (!userExists) validUserId = undefined as any;
+    }
+    if (!validUserId) {
+      const firstMember = await this.prisma.workspaceMember.findFirst({ where: { workspaceId } });
+      if (firstMember) {
+        validUserId = firstMember.userId;
+      } else {
+        let firstUser = await this.prisma.user.findFirst();
+        if (!firstUser) {
+          firstUser = await this.prisma.user.create({
+            data: {
+              email: 'admin@pyramid.local',
+              passwordHash: 'dummy-password-hash',
+              fullName: 'Admin',
+              username: 'admin',
+            },
+          });
+        }
+        validUserId = firstUser.id;
+      }
+    }
+
+    let targetWorkspaceId = workspaceId;
+    const wsExists = await this.prisma.workspace.findUnique({ where: { id: targetWorkspaceId } });
+    if (!wsExists) {
+      let firstWs = await this.prisma.workspace.findFirst();
+      if (!firstWs) {
+        firstWs = await this.prisma.workspace.create({
+          data: {
+            name: 'Default Workspace',
+            slug: `default-workspace-${Date.now()}`,
+          },
+        });
+      }
+      targetWorkspaceId = firstWs.id;
+    }
+
+    let reporterId = dto.reporterId || validUserId;
+    if (reporterId) {
+      const reporterExists = await this.prisma.user.findUnique({ where: { id: reporterId } });
+      if (!reporterExists) reporterId = validUserId;
+    }
+
     const created = await this.prisma.$transaction(async (tx) => {
       const project = await tx.project.create({
         data: {
-          workspaceId,
-          createdById,
+          workspaceId: targetWorkspaceId,
+          createdById: validUserId,
           name: dto.name.trim(),
           description: dto.description?.trim(),
           status: dto.status || ProjectStatus.PLANNED,
           priority: dto.priority || Priority.NONE,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
-          reporterId: dto.reporterId || createdById,
+          reporterId: reporterId || validUserId,
           teamId: dto.teamId || null,
         },
       });
 
       if (dto.memberIds && dto.memberIds.length > 0) {
-        await tx.projectMember.createMany({
-          data: dto.memberIds.map((userId) => ({
-            projectId: project.id,
-            userId,
-          })),
+        const validMembers = await tx.user.findMany({
+          where: { id: { in: dto.memberIds } },
+          select: { id: true },
         });
+        if (validMembers.length > 0) {
+          await tx.projectMember.createMany({
+            data: validMembers.map((m) => ({
+              projectId: project.id,
+              userId: m.id,
+            })),
+          });
+        }
       }
 
       if (dto.labelIds && dto.labelIds.length > 0) {
-        await tx.projectLabel.createMany({
-          data: dto.labelIds.map((labelId) => ({
-            projectId: project.id,
-            labelId,
-          })),
+        const validLabels = await tx.label.findMany({
+          where: { id: { in: dto.labelIds } },
+          select: { id: true },
         });
+        if (validLabels.length > 0) {
+          await tx.projectLabel.createMany({
+            data: validLabels.map((l) => ({
+              projectId: project.id,
+              labelId: l.id,
+            })),
+          });
+        }
       }
 
       return project;
     });
 
-    return this.findOne(workspaceId, created.id);
+    return this.findOne(targetWorkspaceId, created.id);
   }
 
-  async findAll(workspaceId: string, query: ProjectQueryDto) {
+  async findAll(workspaceId: string, query: ProjectQueryDto, requesterId?: string, requesterRole?: string) {
     const { page = 1, limit = 20, search, status, priority, memberId, teamId, labelId, reporterId, dueDate, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
     const where: Prisma.ProjectWhereInput = {
       workspaceId,
       deletedAt: null,
     };
+
+    // RBAC: Members can only see projects they are explicitly added to (or assigned a task in)
+    if (requesterRole === 'MEMBER' && requesterId) {
+      where.AND = [
+        {
+          OR: [
+            { members: { some: { userId: requesterId } } },
+            { tasks: { some: { members: { some: { userId: requesterId } } } } },
+          ],
+        },
+      ];
+    }
 
     if (search) {
       where.OR = [
@@ -122,7 +192,17 @@ export class ProjectsService {
           team: { select: { id: true, name: true } },
           members: {
             include: {
-              user: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
+              user: { select: { id: true, email: true, fullName: true, username: true, avatarUrl: true } },
+            },
+          },
+          tasks: {
+            where: { deletedAt: null },
+            include: {
+              members: {
+                include: {
+                  user: { select: { id: true, email: true, fullName: true, username: true, avatarUrl: true } },
+                },
+              },
             },
           },
           labels: {
@@ -135,21 +215,41 @@ export class ProjectsService {
       }),
     ]);
 
-    const formatted = projects.map((p) => ({
-      id: p.id,
-      workspaceId: p.workspaceId,
-      name: p.name,
-      description: p.description,
-      status: p.status,
-      priority: p.priority,
-      dueDate: p.dueDate,
-      position: p.position,
-      reporter: p.reporter,
-      team: p.team,
-      members: p.members.map((m) => m.user),
-      labels: p.labels.map((l) => l.label),
-      taskCount: p._count.tasks,
-    }));
+    const formatted = projects.map((p) => {
+      // Direct project members
+      const directMembers = (p.members || []).map((m) => m?.user).filter(Boolean)
+        .map((u) => ({ ...u, source: 'project' as const }));
+
+      // Task-sourced members (anyone assigned to any task in this project)
+      const taskMembers = (p.tasks || []).flatMap((t) =>
+        (t.members || []).map((m) => m?.user).filter(Boolean)
+          .map((u) => ({ ...u, source: 'task' as const }))
+      );
+
+      // Merge and deduplicate by user ID; direct membership takes precedence
+      const seenIds = new Set<string>();
+      const allMembers = [...directMembers, ...taskMembers].filter((u) => {
+        if (!u || seenIds.has(u.id)) return false;
+        seenIds.add(u.id);
+        return true;
+      });
+
+      return {
+        id: p.id,
+        workspaceId: p.workspaceId,
+        name: p.name,
+        description: p.description,
+        status: p.status,
+        priority: p.priority,
+        dueDate: p.dueDate,
+        position: p.position,
+        reporter: p.reporter || null,
+        team: p.team || null,
+        members: allMembers,
+        labels: (p.labels || []).map((l) => l?.label).filter(Boolean),
+        taskCount: p._count?.tasks || 0,
+      };
+    });
 
     return {
       data: formatted,
@@ -170,7 +270,17 @@ export class ProjectsService {
         team: { select: { id: true, name: true } },
         members: {
           include: {
-            user: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
+            user: { select: { id: true, email: true, fullName: true, username: true, avatarUrl: true } },
+          },
+        },
+        tasks: {
+          where: { deletedAt: null },
+          include: {
+            members: {
+              include: {
+                user: { select: { id: true, email: true, fullName: true, username: true, avatarUrl: true } },
+              },
+            },
           },
         },
         labels: {
@@ -186,6 +296,24 @@ export class ProjectsService {
       throw new NotFoundException('Project not found.');
     }
 
+    // Direct project members
+    const directMembers = (project.members || []).map((m) => m?.user).filter(Boolean)
+      .map((u) => ({ ...u, source: 'project' as const }));
+
+    // Task-sourced members (anyone assigned to any task in this project)
+    const taskMembers = (project.tasks || []).flatMap((t) =>
+      (t.members || []).map((m) => m?.user).filter(Boolean)
+        .map((u) => ({ ...u, source: 'task' as const }))
+    );
+
+    // Merge and deduplicate by user ID; direct membership takes precedence
+    const seenIds = new Set<string>();
+    const allMembers = [...directMembers, ...taskMembers].filter((u) => {
+      if (!u || seenIds.has(u.id)) return false;
+      seenIds.add(u.id);
+      return true;
+    });
+
     return {
       id: project.id,
       workspaceId: project.workspaceId,
@@ -195,11 +323,11 @@ export class ProjectsService {
       priority: project.priority,
       dueDate: project.dueDate,
       position: project.position,
-      reporter: project.reporter,
-      team: project.team,
-      members: project.members.map((m) => m.user),
-      labels: project.labels.map((l) => l.label),
-      taskCount: project._count.tasks,
+      reporter: project.reporter || null,
+      team: project.team || null,
+      members: allMembers,
+      labels: (project.labels || []).map((l) => l?.label).filter(Boolean),
+      taskCount: project._count?.tasks || 0,
     };
   }
 
