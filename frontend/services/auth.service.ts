@@ -31,6 +31,15 @@ export const authService = {
     return data;
   },
 
+  async googleLogin(payload: { email: string; fullName?: string; avatarUrl?: string }) {
+    const { data } = await apiClient.post('/auth/google', payload);
+    if (data.accessToken) {
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('refreshToken', data.refreshToken);
+    }
+    return data;
+  },
+
   async getMe() {
     const { data } = await apiClient.get('/auth/me');
     return data;

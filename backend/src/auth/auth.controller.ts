@@ -23,6 +23,12 @@ export class AuthController {
   }
 
   @Public()
+  @Post('google')
+  googleLogin(@Body() dto: { email: string; fullName?: string; avatarUrl?: string }) {
+    return this.authService.googleLogin(dto);
+  }
+
+  @Public()
   @Post('refresh')
   refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refreshToken(dto);
