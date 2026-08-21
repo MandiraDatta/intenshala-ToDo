@@ -21,6 +21,7 @@ export class TasksService {
           title: dto.title.trim(),
           description: dto.description?.trim(),
           projectId: dto.projectId || null,
+          parentId: dto.parentId || null,
           status: dto.status || TaskStatus.TODO,
           priority: dto.priority || Priority.NONE,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
@@ -54,7 +55,7 @@ export class TasksService {
   }
 
   async findAll(workspaceId: string, query: TaskQueryDto, requesterId?: string, requesterRole?: string) {
-    const { page = 1, limit = 50, search, projectId, status, priority, memberId, teamId, labelId, reporterId, dueDate, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+    const { page = 1, limit = 50, search, projectId, parentId, status, priority, memberId, teamId, labelId, reporterId, dueDate, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
     const where: Prisma.TaskWhereInput = {
       workspaceId,
@@ -76,6 +77,10 @@ export class TasksService {
 
     if (projectId) {
       where.projectId = projectId;
+    }
+
+    if (parentId !== undefined) {
+      where.parentId = parentId === 'null' ? null : parentId;
     }
 
     if (search) {
@@ -149,6 +154,10 @@ export class TasksService {
               label: { select: { id: true, name: true, color: true } },
             },
           },
+          subtasks: {
+            where: { deletedAt: null },
+            select: { id: true, status: true, title: true },
+          },
         },
       }),
     ]);
@@ -157,6 +166,7 @@ export class TasksService {
       id: t.id,
       workspaceId: t.workspaceId,
       projectId: t.projectId,
+      parentId: t.parentId,
       project: t.project,
       title: t.title,
       description: t.description,
@@ -169,6 +179,8 @@ export class TasksService {
       team: t.team,
       members: t.members.map((m) => m.user),
       labels: t.labels.map((l) => l.label),
+      subtaskCount: t.subtasks.length,
+      subtasksCompletedCount: t.subtasks.filter((s) => s.status === 'COMPLETED').length,
     }));
 
     return {
@@ -189,6 +201,7 @@ export class TasksService {
         project: { select: { id: true, name: true } },
         reporter: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
         team: { select: { id: true, name: true } },
+        parent: { select: { id: true, title: true } },
         members: {
           include: {
             user: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
@@ -197,6 +210,22 @@ export class TasksService {
         labels: {
           include: {
             label: { select: { id: true, name: true, color: true } },
+          },
+        },
+        subtasks: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'asc' },
+          include: {
+            members: {
+              include: {
+                user: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
+              },
+            },
+            labels: {
+              include: {
+                label: { select: { id: true, name: true, color: true } },
+              },
+            },
           },
         },
       },
@@ -210,6 +239,8 @@ export class TasksService {
       id: task.id,
       workspaceId: task.workspaceId,
       projectId: task.projectId,
+      parentId: task.parentId,
+      parent: task.parent,
       project: task.project,
       title: task.title,
       description: task.description,
@@ -222,6 +253,20 @@ export class TasksService {
       team: task.team,
       members: task.members.map((m) => m.user),
       labels: task.labels.map((l) => l.label),
+      subtasks: task.subtasks.map((st) => ({
+        id: st.id,
+        workspaceId: st.workspaceId,
+        projectId: st.projectId,
+        parentId: st.parentId,
+        title: st.title,
+        description: st.description,
+        status: st.status,
+        priority: st.priority,
+        dueDate: st.dueDate,
+        completedAt: st.completedAt,
+        members: st.members.map((m) => m.user),
+        labels: st.labels.map((l) => l.label),
+      })),
     };
   }
 
@@ -233,6 +278,7 @@ export class TasksService {
         ...(dto.title && { title: dto.title.trim() }),
         ...(dto.description !== undefined && { description: dto.description?.trim() }),
         ...(dto.projectId !== undefined && { projectId: dto.projectId }),
+        ...(dto.parentId !== undefined && { parentId: dto.parentId }),
         ...(dto.priority && { priority: dto.priority }),
         ...(dto.dueDate !== undefined && { dueDate: dto.dueDate ? new Date(dto.dueDate) : null }),
         ...(dto.reporterId !== undefined && { reporterId: dto.reporterId }),

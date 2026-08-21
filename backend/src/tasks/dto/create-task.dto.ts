@@ -16,6 +16,10 @@ export class CreateTaskDto {
   @IsOptional()
   projectId?: string;
 
+  @IsUUID()
+  @IsOptional()
+  parentId?: string;
+
   @IsEnum(TaskStatus)
   @IsOptional()
   status?: TaskStatus = TaskStatus.TODO;

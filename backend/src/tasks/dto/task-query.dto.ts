@@ -25,6 +25,10 @@ export class TaskQueryDto {
 
   @IsString()
   @IsOptional()
+  parentId?: string;
+
+  @IsString()
+  @IsOptional()
   status?: string;
 
   @IsString()

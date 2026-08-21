@@ -197,7 +197,7 @@ export default function KanbanColumn({
                       <div className="flex-1 min-w-[10rem] shrink-0 font-medium truncate pr-2 flex items-center gap-2">
                         <GripVertical className="w-3.5 h-3.5 text-[#A3A3A3] shrink-0 opacity-40 hover:opacity-100 cursor-grab" />
                         <Link
-                          href="/task"
+                          href={`/task?id=${task.id}&title=${encodeURIComponent(task.title || "")}`}
                           draggable={false}
                           className="hover:underline cursor-pointer truncate text-[#171717] dark:text-[#F5F5F5]"
                         >
