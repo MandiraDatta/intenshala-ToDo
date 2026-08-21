@@ -57,10 +57,10 @@ function AcceptInviteContent() {
     try {
       const res = await inviteService.acceptInvite(token);
       setSuccess(true);
-      await refreshWorkspaces();
-      if (res.workspace) {
-        setActiveWorkspace(res.workspace);
+      if (res.workspace?.id) {
+        localStorage.setItem("active_workspace_id", res.workspace.id);
       }
+      await refreshWorkspaces();
       setTimeout(() => {
         if (inviteData?.projectId) {
           router.push(`/dashboard?projectId=${inviteData.projectId}`);
@@ -77,7 +77,18 @@ function AcceptInviteContent() {
 
   useEffect(() => {
     if (autoAccept === "true" && user && inviteData && !hasAutoAccepted && !loading) {
-      if (user.email === inviteData.email) {
+      const targetEmail = (inviteData?.email || "").toLowerCase().trim();
+      const userEmail = (user?.email || "").toLowerCase().trim();
+      const username = (user?.username || "").toLowerCase().trim();
+
+      const isMatch =
+        !targetEmail ||
+        userEmail === targetEmail ||
+        username === targetEmail ||
+        userEmail.includes(targetEmail) ||
+        targetEmail.includes(userEmail);
+
+      if (isMatch) {
         setHasAutoAccepted(true);
         handleAccept();
       }

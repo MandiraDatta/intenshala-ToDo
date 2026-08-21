@@ -6,6 +6,7 @@ export interface ProjectMember {
   name: string;
   avatar?: string;
   initials?: string;
+  email?: string;
   /** 'project' = directly added; 'task' = added via a task assignment */
   source?: 'project' | 'task';
 }

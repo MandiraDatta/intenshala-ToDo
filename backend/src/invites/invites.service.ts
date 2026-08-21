@@ -113,6 +113,21 @@ export class InvitesService {
     const invite = await this.getInviteByToken(token);
     const targetInvite = invite as any;
 
+    const existingMember = await this.prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId: invite.workspaceId,
+          userId,
+        },
+      },
+      include: {
+        workspace: true,
+      },
+    });
+
+    const isOwner = existingMember?.role === 'OWNER' || (existingMember?.workspace as any)?.createdById === userId;
+    const finalRole = isOwner ? 'OWNER' : (existingMember?.role === 'ADMIN' ? 'ADMIN' : invite.role);
+
     // Upsert membership for user in workspace
     const membership = await this.prisma.workspaceMember.upsert({
       where: {
@@ -124,17 +139,17 @@ export class InvitesService {
       create: {
         workspaceId: invite.workspaceId,
         userId,
-        role: invite.role,
+        role: finalRole,
       },
       update: {
-        role: invite.role,
+        role: finalRole,
       },
       include: {
         workspace: true,
       },
     });
 
-    // If invite was for a specific task, assign user to task_members
+    // If invite was for a specific task, assign user to task_members and project_members
     if (targetInvite.taskId) {
       await this.prisma.taskMember.upsert({
         where: {
@@ -149,6 +164,26 @@ export class InvitesService {
         },
         update: {},
       }).catch(() => {});
+
+      const task = await this.prisma.task.findUnique({
+        where: { id: targetInvite.taskId },
+        select: { projectId: true },
+      });
+      if (task?.projectId) {
+        await this.prisma.projectMember.upsert({
+          where: {
+            projectId_userId: {
+              projectId: task.projectId,
+              userId,
+            },
+          },
+          create: {
+            projectId: task.projectId,
+            userId,
+          },
+          update: {},
+        }).catch(() => {});
+      }
     }
 
     // If invite was for a specific project, assign user to project_members
@@ -207,5 +242,79 @@ export class InvitesService {
       title: m.user.title,
       avatarUrl: m.user.avatarUrl,
     }));
+  }
+
+  async getMyPendingInvites(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) return [];
+
+    const userEmail = user.email.trim();
+    const username = user.username?.trim();
+    const emailPrefix = userEmail.split('@')[0];
+
+    const allPending = await this.prisma.workspaceInvite.findMany({
+      where: {
+        status: 'PENDING',
+        expiresAt: { gt: new Date() },
+      },
+      include: {
+        workspace: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        invitedBy: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const matched = allPending.filter((inv) => {
+      const target = inv.email.toLowerCase().trim();
+      const uEmail = userEmail.toLowerCase();
+      const uName = username ? username.toLowerCase() : '';
+      const uPrefix = emailPrefix.toLowerCase();
+
+      return (
+        target === uEmail ||
+        (uName && target === uName) ||
+        (uPrefix && (target.startsWith(uPrefix) || uPrefix.startsWith(target))) ||
+        target.includes(uPrefix) ||
+        uEmail.includes(target)
+      );
+    });
+
+    return Promise.all(
+      matched.map(async (inv) => {
+        let projectName: string | null = null;
+        if (inv.projectId) {
+          const p = await this.prisma.project.findUnique({
+            where: { id: inv.projectId },
+            select: { name: true },
+          });
+          projectName = p?.name || null;
+        }
+        return {
+          id: inv.id,
+          token: inv.token,
+          role: inv.role,
+          createdAt: inv.createdAt,
+          expiresAt: inv.expiresAt,
+          workspaceName: inv.workspace.name,
+          inviterName: inv.invitedBy.fullName || inv.invitedBy.username || inv.invitedBy.email,
+          projectName,
+        };
+      }),
+    );
   }
 }

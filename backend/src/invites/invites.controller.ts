@@ -20,6 +20,11 @@ export class InvitesController {
     return this.invitesService.createInvite(workspaceId, inviterId, dto);
   }
 
+  @Get('invites/pending/me')
+  getMyPendingInvites(@CurrentUser('id') userId: string) {
+    return this.invitesService.getMyPendingInvites(userId);
+  }
+
   @Public()
   @Get('invites/:token')
   getInvite(@Param('token') token: string) {

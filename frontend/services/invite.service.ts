@@ -20,4 +20,9 @@ export const inviteService = {
     const { data } = await apiClient.get(`/workspaces/${workspaceId}/members`);
     return data;
   },
+
+  async getMyPendingInvites() {
+    const { data } = await apiClient.get('/invites/pending/me');
+    return data;
+  },
 };

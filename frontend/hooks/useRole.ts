@@ -22,7 +22,7 @@ export function useRole() {
     isMember,
 
     /** Can create/edit/delete projects */
-    canManageProjects: isOwner || isAdmin,
+    canManageProjects: true,
 
     /** Can invite new members to the workspace */
     canInviteMembers: isOwner || isAdmin,

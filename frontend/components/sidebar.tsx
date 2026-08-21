@@ -12,6 +12,7 @@ import {
   Check,
   User as UserIcon,
   LogOut,
+  Building,
 } from "lucide-react";
 import { Sun, Gear, Square } from "@phosphor-icons/react";
 import { useTheme, COLOR_MODES } from "@/context/ThemeContext";
@@ -23,18 +24,23 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isWsDropdownOpen, setIsWsDropdownOpen] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState<"theme" | "color" | null>(null);
   const { theme, setTheme, colorMode, setColorMode } = useTheme();
   const { user } = useUser();
-  const { myRole } = useWorkspace();
+  const { workspaces, activeWorkspace, setActiveWorkspace, myRole } = useWorkspace();
   const profileRef = useRef<HTMLDivElement>(null);
+  const wsDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close profile dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
         setActiveSubmenu(null);
+      }
+      if (wsDropdownRef.current && !wsDropdownRef.current.contains(event.target as Node)) {
+        setIsWsDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -230,26 +236,6 @@ export default function Sidebar() {
                     </Link>
                   </div>
                 )}
-
-                {/* Divider */}
-                <div className="w-full h-px bg-[#E5E5E5] dark:bg-[#2A2A2A] my-1" />
-
-                {/* Logout Button in Dropdown */}
-                <div onMouseEnter={() => setActiveSubmenu(null)}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProfileOpen(false);
-                      authService.logout();
-                    }}
-                    className="w-full flex items-center justify-between h-9 px-3 gap-2.5 rounded-2xl hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 transition-colors cursor-pointer text-left"
-                  >
-                    <LogOut className="w-4 h-4 shrink-0 stroke-[2]" />
-                    <span className="font-sans text-xs font-semibold flex-1 truncate">
-                      Log Out
-                    </span>
-                  </button>
-                </div>
               </div>
             </div>
           )}
