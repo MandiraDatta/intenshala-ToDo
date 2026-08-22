@@ -229,14 +229,16 @@ function ProjectMembersModal({
 
     if (!alreadyExists) {
       const newMemberItem = {
-        id: m.id || m.userId || `m-${Date.now()}`,
+        id: m.user?.id || m.userId || m.id || `m-${Date.now()}`,
+        userId: m.user?.id || m.userId || m.id,
         name: memberName,
+        email: m.user?.email || m.email,
         initials: memberName
           .split(" ")
           .map((n: string) => n[0])
           .join("")
           .toUpperCase(),
-        avatar: m.avatarUrl,
+        avatar: m.user?.avatarUrl || m.avatarUrl,
       };
 
       const updatedProject: Project = {

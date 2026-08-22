@@ -167,7 +167,8 @@ export default function AddProjectModal({
           (wm) => (wm.fullName || wm.username || "").toLowerCase() === mem.toLowerCase()
         );
         return {
-          id: found?.id || `m-${Date.now()}-${idx}`,
+          id: found?.userId || found?.id || `m-${Date.now()}-${idx}`,
+          userId: found?.userId || found?.id,
           name: found?.fullName || found?.username || mem,
           initials: (found?.fullName || found?.username || mem)
             .split(" ")

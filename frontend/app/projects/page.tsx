@@ -129,11 +129,11 @@ export default function ProjectsPage() {
           name: item.name || "Untitled Project",
           priority: item.priority ? (item.priority.charAt(0) + item.priority.slice(1).toLowerCase().replace('_', ' ')) as any : "Medium",
           status: item.status === "IN_PROGRESS" ? "In Progress" : (item.status === "COMPLETED" ? "Completed" : "Planned"),
-          members: (savedMeta.members && savedMeta.members.length > 0) ? savedMeta.members : backendMembers,
-          dueDate: (savedMeta.dueDate && savedMeta.dueDate !== "No Due Date") ? savedMeta.dueDate : (backendDueDate || "No Due Date"),
-          teams: (savedMeta.teams && savedMeta.teams.length > 0) ? savedMeta.teams : (backendTeams || []),
-          labels: (savedMeta.labels && savedMeta.labels.length > 0) ? savedMeta.labels : (backendLabels || []),
-          reporter: savedMeta.reporter || backendReporter || "",
+          members: backendMembers.length > 0 ? backendMembers : (savedMeta.members || []),
+          dueDate: backendDueDate || (savedMeta.dueDate && savedMeta.dueDate !== "No Due Date" ? savedMeta.dueDate : "No Due Date"),
+          teams: backendTeams && backendTeams.length > 0 ? backendTeams : (savedMeta.teams || []),
+          labels: backendLabels && backendLabels.length > 0 ? backendLabels : (savedMeta.labels || []),
+          reporter: backendReporter || savedMeta.reporter || "",
         };
       });
 
@@ -217,6 +217,10 @@ export default function ProjectsPage() {
       "No Priority": "NONE",
     };
 
+    const memberIds = (newProjData.members || [])
+      .map((m: any) => m.userId || m.id)
+      .filter((id: string) => id && !id.startsWith('m-'));
+
     if (editingProject) {
       const updatedProject = { ...editingProject, ...newProjData };
 
@@ -236,6 +240,7 @@ export default function ProjectsPage() {
           name: newProjData.name,
           status: statusMap[newProjData.status] || "PLANNED",
           priority: priorityMap[newProjData.priority] || "MEDIUM",
+          ...(memberIds.length > 0 && { memberIds }),
         });
         await fetchProjects();
       } catch (e) {
@@ -260,6 +265,7 @@ export default function ProjectsPage() {
           description: "",
           status: statusMap[newProjData.status] || "PLANNED",
           priority: priorityMap[newProjData.priority] || "MEDIUM",
+          ...(memberIds.length > 0 && { memberIds }),
         });
 
         if (created?.id && typeof window !== "undefined") {
@@ -305,6 +311,26 @@ export default function ProjectsPage() {
         );
       } catch (e) {
         console.error("Failed to sync project status update to server", e);
+      }
+    }
+  };
+
+  const handleUpdateProject = async (updatedProject: Project) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === updatedProject.id ? updatedProject : p))
+    );
+
+    if (activeWorkspace?.id) {
+      try {
+        const memberIds = (updatedProject.members || [])
+          .map((m: any) => m.userId || m.id)
+          .filter((id: string) => id && !id.startsWith('m-') && !id.startsWith('lead-'));
+
+        await projectService.updateProject(activeWorkspace.id, updatedProject.id, {
+          memberIds,
+        });
+      } catch (e) {
+        console.error("Failed to sync project member update to server", e);
       }
     }
   };
@@ -363,9 +389,7 @@ export default function ProjectsPage() {
                 onAddProject={canManageProjects ? () => handleOpenAddModal("Planned") : () => {}}
                 onDeleteProject={handleDeleteProject}
                 onEditProject={handleOpenEditModal}
-                onUpdateProject={(updated) =>
-                  setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
-                }
+                onUpdateProject={handleUpdateProject}
               />
             ) : (
               <ProjectBoardView

@@ -39,8 +39,12 @@ export class ProjectsController {
   }
 
   @Get(':projectId')
-  findOne(@Param('workspaceId') workspaceId: string, @Param('projectId') projectId: string) {
-    return this.projectsService.findOne(workspaceId, projectId);
+  findOne(
+    @Param('workspaceId') workspaceId: string,
+    @Param('projectId') projectId: string,
+    @Request() req: any,
+  ) {
+    return this.projectsService.findOne(workspaceId, projectId, req.user?.id, req.workspaceMember?.role);
   }
 
   @Patch(':projectId')

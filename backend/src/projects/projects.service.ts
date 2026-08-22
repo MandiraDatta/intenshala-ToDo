@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -9,8 +9,28 @@ import { Prisma } from '@prisma/client';
 import { ProjectStatus, Priority } from '../common/enums';
 
 @Injectable()
-export class ProjectsService {
+export class ProjectsService implements OnModuleInit {
   constructor(private prisma: PrismaService) {}
+
+  async onModuleInit() {
+    try {
+      const projects = await this.prisma.project.findMany({
+        where: { deletedAt: null },
+        select: { id: true, createdById: true },
+      });
+      for (const p of projects) {
+        if (p.createdById) {
+          await this.prisma.projectMember.upsert({
+            where: { projectId_userId: { projectId: p.id, userId: p.createdById } },
+            create: { projectId: p.id, userId: p.createdById },
+            update: {},
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {
+      // Ignore initial backfill errors
+    }
+  }
 
   async create(workspaceId: string, createdById: string, dto: CreateProjectDto) {
     let validUserId = createdById;
@@ -74,9 +94,10 @@ export class ProjectsService {
         },
       });
 
-      if (dto.memberIds && dto.memberIds.length > 0) {
+      const initialMemberIds = Array.from(new Set([...(dto.memberIds || []), ...(validUserId ? [validUserId] : [])]));
+      if (initialMemberIds.length > 0) {
         const validMembers = await tx.user.findMany({
-          where: { id: { in: dto.memberIds } },
+          where: { id: { in: initialMemberIds } },
           select: { id: true },
         });
         if (validMembers.length > 0) {
@@ -118,12 +139,13 @@ export class ProjectsService {
       deletedAt: null,
     };
 
-    // RBAC: Members can only see projects they are explicitly added to (or assigned a task in)
+    // RBAC: Members can ONLY see projects they are explicitly added to, created, or assigned a task in
     if (requesterRole === 'MEMBER' && requesterId) {
       where.AND = [
         {
           OR: [
             { members: { some: { userId: requesterId } } },
+            { createdById: requesterId },
             { tasks: { some: { members: { some: { userId: requesterId } } } } },
           ],
         },
@@ -188,7 +210,8 @@ export class ProjectsService {
         take: limit,
         orderBy: { [sortBy]: sortOrder },
         include: {
-          reporter: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
+          createdBy: { select: { id: true, email: true, fullName: true, username: true, avatarUrl: true } },
+          reporter: { select: { id: true, email: true, fullName: true, username: true, avatarUrl: true } },
           team: { select: { id: true, name: true } },
           members: {
             include: {
@@ -216,6 +239,9 @@ export class ProjectsService {
     ]);
 
     const formatted = projects.map((p) => {
+      // Creator member
+      const creatorMember = p.createdBy ? [{ ...p.createdBy, source: 'project' as const }] : [];
+
       // Direct project members
       const directMembers = (p.members || []).map((m) => m?.user).filter(Boolean)
         .map((u) => ({ ...u, source: 'project' as const }));
@@ -226,10 +252,10 @@ export class ProjectsService {
           .map((u) => ({ ...u, source: 'task' as const }))
       );
 
-      // Merge and deduplicate by user ID; direct membership takes precedence
+      // Merge and deduplicate by user ID; creator & direct membership take precedence
       const seenIds = new Set<string>();
-      const allMembers = [...directMembers, ...taskMembers].filter((u) => {
-        if (!u || seenIds.has(u.id)) return false;
+      const allMembers = [...creatorMember, ...directMembers, ...taskMembers].filter((u) => {
+        if (!u || !u.id || seenIds.has(u.id)) return false;
         seenIds.add(u.id);
         return true;
       });
@@ -262,11 +288,12 @@ export class ProjectsService {
     };
   }
 
-  async findOne(workspaceId: string, projectId: string) {
+  async findOne(workspaceId: string, projectId: string, requesterId?: string, requesterRole?: string) {
     const project = await this.prisma.project.findFirst({
       where: { id: projectId, workspaceId, deletedAt: null },
       include: {
-        reporter: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
+        createdBy: { select: { id: true, email: true, fullName: true, username: true, avatarUrl: true } },
+        reporter: { select: { id: true, email: true, fullName: true, username: true, avatarUrl: true } },
         team: { select: { id: true, name: true } },
         members: {
           include: {
@@ -296,6 +323,18 @@ export class ProjectsService {
       throw new NotFoundException('Project not found.');
     }
 
+    if (requesterRole === 'MEMBER' && requesterId) {
+      const isMember = project.members.some((m) => m.userId === requesterId);
+      const isCreator = project.createdById === requesterId;
+      const isTaskAssigned = project.tasks.some((t) => t.members.some((m) => m.userId === requesterId));
+      if (!isMember && !isCreator && !isTaskAssigned) {
+        throw new ForbiddenException('You do not have permission to view or access this project.');
+      }
+    }
+
+    // Creator member
+    const creatorMember = project.createdBy ? [{ ...project.createdBy, source: 'project' as const }] : [];
+
     // Direct project members
     const directMembers = (project.members || []).map((m) => m?.user).filter(Boolean)
       .map((u) => ({ ...u, source: 'project' as const }));
@@ -306,10 +345,10 @@ export class ProjectsService {
         .map((u) => ({ ...u, source: 'task' as const }))
     );
 
-    // Merge and deduplicate by user ID; direct membership takes precedence
+    // Merge and deduplicate by user ID; creator & direct membership take precedence
     const seenIds = new Set<string>();
-    const allMembers = [...directMembers, ...taskMembers].filter((u) => {
-      if (!u || seenIds.has(u.id)) return false;
+    const allMembers = [...creatorMember, ...directMembers, ...taskMembers].filter((u) => {
+      if (!u || !u.id || seenIds.has(u.id)) return false;
       seenIds.add(u.id);
       return true;
     });
