@@ -33,6 +33,18 @@ export class InvitesService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiration
 
+    let targetProjectId = dto.projectId || null;
+    if (!targetProjectId) {
+      const defaultProject = await this.prisma.project.findFirst({
+        where: { workspaceId, deletedAt: null },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      if (defaultProject) {
+        targetProjectId = defaultProject.id;
+      }
+    }
+
     // Save invite to DB
     const invite = await this.prisma.workspaceInvite.create({
       data: {
@@ -41,7 +53,7 @@ export class InvitesService {
         email: targetEmail,
         role: dto.role || 'MEMBER',
         taskId: dto.taskId || null,
-        projectId: dto.projectId || null,
+        projectId: targetProjectId,
         token,
         expiresAt,
         status: 'PENDING',
@@ -50,9 +62,9 @@ export class InvitesService {
 
     // Fetch project name if projectId is provided
     let projectName: string | undefined;
-    if (dto.projectId) {
+    if (targetProjectId) {
       const project = await this.prisma.project.findUnique({
-        where: { id: dto.projectId },
+        where: { id: targetProjectId },
         select: { name: true },
       });
       if (project) {
@@ -106,7 +118,21 @@ export class InvitesService {
       throw new BadRequestException('Invitation has expired.');
     }
 
-    return invite;
+    let projectName: string | undefined;
+    if (invite.projectId) {
+      const project = await this.prisma.project.findUnique({
+        where: { id: invite.projectId },
+        select: { name: true },
+      });
+      if (project) {
+        projectName = project.name;
+      }
+    }
+
+    return {
+      ...invite,
+      projectName,
+    };
   }
 
   async acceptInvite(userId: string, token: string) {
@@ -186,17 +212,29 @@ export class InvitesService {
       }
     }
 
-    // If invite was for a specific project, assign user to project_members
-    if (targetInvite.projectId) {
+    // Assign user to project_members (target invite project or workspace default project)
+    let projectIdToAssign = targetInvite.projectId;
+    if (!projectIdToAssign) {
+      const defaultProject = await this.prisma.project.findFirst({
+        where: { workspaceId: invite.workspaceId, deletedAt: null },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      if (defaultProject) {
+        projectIdToAssign = defaultProject.id;
+      }
+    }
+
+    if (projectIdToAssign) {
       await this.prisma.projectMember.upsert({
         where: {
           projectId_userId: {
-            projectId: targetInvite.projectId,
+            projectId: projectIdToAssign,
             userId,
           },
         },
         create: {
-          projectId: targetInvite.projectId,
+          projectId: projectIdToAssign,
           userId,
         },
         update: {},

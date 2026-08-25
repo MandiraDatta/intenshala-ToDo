@@ -50,6 +50,9 @@ export default function MemberAvatarStack({
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"existing" | "invite_mail">("existing");
 
+  // Project selector state
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(projectId || "");
+
   // Email tab state
   const [emailInput, setEmailInput] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -88,6 +91,17 @@ export default function MemberAvatarStack({
             } catch (projErr) {
               console.warn("Could not fetch project members for filtering", projErr);
             }
+          } else {
+            // Load projects for fallback selection if projectId not passed
+            try {
+              const res = await projectService.getProjects(activeWorkspace.id);
+              const list = Array.isArray(res?.data) ? res.data : [];
+              if (list.length > 0) {
+                setSelectedProjectId(list[0].id);
+              }
+            } catch (pErr) {
+              console.warn("Could not fetch workspace projects", pErr);
+            }
           }
 
           setExistingMembers(membersList);
@@ -102,6 +116,8 @@ export default function MemberAvatarStack({
     }
   }, [isPopoverOpen, activeWorkspace?.id, projectId]);
 
+  const effectiveProjectId = projectId || selectedProjectId;
+
   // Handle inviting via email (Tab 2)
   const handleSendInviteEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +126,7 @@ export default function MemberAvatarStack({
     setSendingEmail(true);
     setFeedback(null);
     try {
-      await inviteService.sendInvite(activeWorkspace.id, emailInput.trim(), 'MEMBER', taskId, projectId);
+      await inviteService.sendInvite(activeWorkspace.id, emailInput.trim(), 'MEMBER', taskId, effectiveProjectId);
       setFeedback({
         type: "success",
         message: `Invite email sent via Resend to ${emailInput.trim()}! Member will appear once accepted.`,
@@ -138,7 +154,7 @@ export default function MemberAvatarStack({
     setInvitingMemberId(member.id);
     setFeedback(null);
     try {
-      await inviteService.sendInvite(activeWorkspace.id, member.email, 'MEMBER', taskId, projectId);
+      await inviteService.sendInvite(activeWorkspace.id, member.email, 'MEMBER', taskId, effectiveProjectId);
       setFeedback({
         type: "success",
         message: `Invitation email sent to ${member.fullName}! Member will appear once they accept.`,

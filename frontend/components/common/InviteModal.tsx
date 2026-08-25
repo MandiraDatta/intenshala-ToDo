@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { Send, CheckCircle2, AlertCircle, Loader2, X, Users, Mail, Search, UserPlus } from "lucide-react";
+import { Send, CheckCircle2, AlertCircle, Loader2, X, Users, Mail, Search, UserPlus, FolderKanban } from "lucide-react";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import { useTheme } from "@/context/ThemeContext";
 import { inviteService } from "@/services/invite.service";
+import { projectService } from "@/services/project.service";
 
 interface ExistingWorkspaceMember {
   id: string;
@@ -16,6 +17,11 @@ interface ExistingWorkspaceMember {
   email: string;
   title?: string;
   avatarUrl?: string;
+}
+
+interface WorkspaceProject {
+  id: string;
+  name: string;
 }
 
 export interface InviteModalProps {
@@ -38,6 +44,10 @@ export default function InviteModal({
 
   const [activeTab, setActiveTab] = useState<"existing" | "invite_mail">("existing");
 
+  // Project selector state
+  const [projectsList, setProjectsList] = useState<WorkspaceProject[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(projectId || "");
+
   // Email tab state
   const [emailInput, setEmailInput] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -51,10 +61,12 @@ export default function InviteModal({
   // Feedback state
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // Load existing workspace members when modal opens
+  // Load existing workspace members and projects when modal opens
   useEffect(() => {
     if (isOpen && activeWorkspace?.id) {
       setLoadingMembers(true);
+      
+      // Load members
       inviteService
         .getWorkspaceMembers(activeWorkspace.id)
         .then((data) => {
@@ -66,10 +78,26 @@ export default function InviteModal({
         .finally(() => {
           setLoadingMembers(false);
         });
+
+      // Load projects for project context selection
+      projectService
+        .getProjects(activeWorkspace.id)
+        .then((res) => {
+          const list = Array.isArray(res?.data) ? res.data : [];
+          setProjectsList(list);
+          if (!projectId && list.length > 0) {
+            setSelectedProjectId(list[0].id);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to load workspace projects", err);
+        });
     }
-  }, [isOpen, activeWorkspace?.id]);
+  }, [isOpen, activeWorkspace?.id, projectId]);
 
   if (!isOpen) return null;
+
+  const effectiveProjectId = projectId || selectedProjectId;
 
   // Handle inviting via email (Tab 2)
   const handleSendInviteEmail = async (e: React.FormEvent) => {
@@ -79,7 +107,7 @@ export default function InviteModal({
     setSendingEmail(true);
     setFeedback(null);
     try {
-      await inviteService.sendInvite(activeWorkspace.id, emailInput.trim(), 'MEMBER', taskId, projectId);
+      await inviteService.sendInvite(activeWorkspace.id, emailInput.trim(), 'MEMBER', taskId, effectiveProjectId);
       setFeedback({
         type: "success",
         message: `Invite email sent via Resend to ${emailInput.trim()}! Member will appear once accepted.`,
@@ -107,7 +135,7 @@ export default function InviteModal({
     setInvitingMemberId(member.id);
     setFeedback(null);
     try {
-      await inviteService.sendInvite(activeWorkspace.id, member.email, 'MEMBER', taskId, projectId);
+      await inviteService.sendInvite(activeWorkspace.id, member.email, 'MEMBER', taskId, effectiveProjectId);
       setFeedback({
         type: "success",
         message: `Invitation email sent to ${member.fullName}! Member will appear once they accept.`,
@@ -210,6 +238,27 @@ export default function InviteModal({
             <span>Invite via Mail</span>
           </button>
         </div>
+
+        {/* Project Access Context Selector */}
+        {projectsList.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <label className="text-[11px] font-medium text-[#737373] dark:text-[#A3A3A3] flex items-center gap-1">
+              <FolderKanban className="w-3 h-3 text-[#737373]" />
+              <span>Grant Access To Project</span>
+            </label>
+            <select
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="h-8 px-2.5 bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] rounded-lg text-xs text-[#171717] dark:text-[#F5F5F5] outline-none cursor-pointer"
+            >
+              {projectsList.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Tab 1: Existing Workspace Members */}
         {activeTab === "existing" && (

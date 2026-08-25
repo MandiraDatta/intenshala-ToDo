@@ -144,11 +144,21 @@ function AcceptInviteContent() {
               <strong>{inviteData?.invitedBy?.fullName || inviteData?.invitedBy?.username}</strong> invited you to join <strong>{inviteData?.workspace?.name}</strong>.
             </p>
 
-            <div className="w-full bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] rounded-xl p-3 my-2 flex items-center justify-between text-xs">
-              <span className="text-[#737373] dark:text-[#A3A3A3]">Workspace:</span>
-              <span className="font-semibold text-[#171717] dark:text-[#F5F5F5]">
-                {inviteData?.workspace?.name}
-              </span>
+            <div className="w-full bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] rounded-xl p-3 my-2 flex flex-col gap-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[#737373] dark:text-[#A3A3A3]">Workspace:</span>
+                <span className="font-semibold text-[#171717] dark:text-[#F5F5F5]">
+                  {inviteData?.workspace?.name}
+                </span>
+              </div>
+              {inviteData?.projectName && (
+                <div className="flex items-center justify-between border-t border-[#E5E5E5] dark:border-[#333333] pt-1.5 mt-0.5">
+                  <span className="text-[#737373] dark:text-[#A3A3A3]">Project:</span>
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                    {inviteData.projectName}
+                  </span>
+                </div>
+              )}
             </div>
 
             {user ? (
