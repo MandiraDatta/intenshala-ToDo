@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { GripVertical, Plus, SignalHigh, SignalMedium, SignalLow, MoreHorizontal, ChevronDown, Pencil, Trash2 } from "lucide-react";
+import { Plus, SignalHigh, SignalMedium, SignalLow, MoreHorizontal, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import TaskCard from "./taskCard";
 import { VisibleFields } from "./taskHeader";
 import MemberAvatarStack from "./common/MemberAvatarStack";
@@ -128,17 +128,21 @@ export default function KanbanColumn({
             onClick={() => setIsExpanded(!isExpanded)}
             className="flex items-center gap-1.5 text-[#171717] dark:text-[#F5F5F5] font-bold text-xs cursor-pointer group"
           >
-            <ChevronDown
-              className={`w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5] stroke-[2.5] transition-transform duration-200 ${isExpanded ? "" : "-rotate-90"
-                }`}
-            />
+            <svg
+              className={`w-2.5 h-2.5 text-[#171717] dark:text-[#F5F5F5] fill-current transition-transform duration-200 ${
+                isExpanded ? "rotate-0" : "-rotate-90"
+              }`}
+              viewBox="0 0 10 10"
+            >
+              <path d="M2 3.5L5 7.5L8 3.5H2Z" />
+            </svg>
             <span>{title}</span>
           </div>
 
           <button
             type="button"
             onClick={handleAddTask}
-            className="flex items-center gap-1 text-xs font-medium text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5] transition-colors px-2 py-0.5 rounded hover:bg-[#F5F5F5] dark:hover:bg-[#262626] cursor-pointer"
+            className="flex items-center gap-1 text-xs font-medium text-[#171717] dark:text-[#F5F5F5] hover:text-black dark:hover:text-white transition-colors px-2 py-0.5 rounded hover:bg-[#F5F5F5] dark:hover:bg-[#262626] cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Add Task</span>
@@ -195,7 +199,6 @@ export default function KanbanColumn({
                     >
                       {/* Drag Handle + Task Title */}
                       <div className="flex-1 min-w-[10rem] shrink-0 font-medium truncate pr-2 flex items-center gap-2">
-                        <GripVertical className="w-3.5 h-3.5 text-[#A3A3A3] shrink-0 opacity-40 hover:opacity-100 cursor-grab" />
                         <Link
                           href={`/task?id=${task.id}&title=${encodeURIComponent(task.title || "")}`}
                           draggable={false}
@@ -210,18 +213,18 @@ export default function KanbanColumn({
                         {/* Priority */}
                         <div className="flex items-center gap-1.5 min-w-0">
                           {priority.toLowerCase() === "low" ? (
-                            <span className="flex items-center gap-1 text-xs font-medium text-[#94A3B8] dark:text-slate-400 truncate">
-                              <SignalLow size={12} className="text-[#94A3B8] shrink-0 stroke-[2.5]" />
+                            <span className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
+                              <SignalLow size={12} className="text-slate-500 dark:text-slate-400 shrink-0 stroke-[2.5]" />
                               Low
                             </span>
                           ) : priority.toLowerCase() === "medium" ? (
-                            <span className="flex items-center gap-1 text-xs font-medium text-[#F97316] dark:text-orange-400 truncate">
-                              <SignalMedium size={12} className="text-[#F97316] shrink-0 stroke-[2.5]" />
+                            <span className="flex items-center gap-1 text-xs font-medium text-orange-500 dark:text-orange-400 truncate">
+                              <SignalMedium size={12} className="text-orange-500 dark:text-orange-400 shrink-0 stroke-[2.5]" />
                               Medium
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1 text-xs font-semibold text-[#EF4444] dark:text-red-400 truncate">
-                              <SignalHigh size={12} className="text-[#EF4444] shrink-0 stroke-[2.5]" />
+                            <span className="flex items-center gap-1 text-xs font-medium text-red-500 dark:text-red-400 truncate">
+                              <SignalHigh size={12} className="text-red-500 dark:text-red-400 shrink-0 stroke-[2.5]" />
                               High
                             </span>
                           )}
@@ -337,7 +340,7 @@ export default function KanbanColumn({
                 <button
                   type="button"
                   onClick={handleAddTask}
-                  className="flex items-center gap-1.5 text-xs font-medium text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5] transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 text-xs font-medium text-[#171717] dark:text-[#F5F5F5] hover:text-black dark:hover:text-white transition-colors cursor-pointer"
                 >
                   <Plus size={14} className="stroke-[2.5]" />
                   <span>Add Task</span>
@@ -363,11 +366,8 @@ export default function KanbanColumn({
     >
       {/* Column Header */}
       <div className="w-full flex items-center justify-between py-1">
-        {/* Left: Grip + Column Title */}
+        {/* Left: Column Title */}
         <div className="flex items-center gap-2">
-          <div className="w-3.5 h-3.5 flex items-center justify-center text-[#737373] dark:text-[#A3A3A3]">
-            <GripVertical className="w-3.5 h-3.5" />
-          </div>
           <span className="font-sans text-xs font-semibold text-[#171717] dark:text-[#F5F5F5] whitespace-nowrap">
             {title}
           </span>
@@ -404,7 +404,7 @@ export default function KanbanColumn({
         onClick={handleAddTask}
         className="w-full flex items-center gap-1.5 py-1.5 px-2 text-[#171717] dark:text-[#F5F5F5] hover:bg-[#E5E5E5]/60 dark:hover:bg-[#262626] rounded transition-colors cursor-pointer"
       >
-        <Plus size={14} />
+        <Plus size={14} className="stroke-[2.5]" />
         <span className="font-sans text-xs font-medium leading-none">
           Add Task
         </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import Sidebar from "@/components/sidebar";
+import Navbar from "@/components/navbar";
 import {
   PanelLeft,
   ChevronRight,
@@ -70,6 +71,7 @@ function TaskDetailContent() {
   const { user } = useUser();
 
   const [loading, setLoading] = useState<boolean>(false);
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [subtasksOpen, setSubtasksOpen] = useState(true);
   const [commentText, setCommentText] = useState("");
   const [replyTextMap, setReplyTextMap] = useState<Record<string, string>>({});
@@ -363,13 +365,13 @@ function TaskDetailContent() {
     switch (pUpper) {
       case "URGENT":
       case "HIGH":
-        return <SignalHigh size={13} className="text-rose-600 dark:text-rose-400 stroke-[2.5]" />;
+        return <SignalHigh size={12} className="text-red-500 dark:text-red-400 stroke-[2.5]" />;
       case "MEDIUM":
-        return <SignalMedium size={13} className="text-amber-600 dark:text-amber-400 stroke-[2.5]" />;
+        return <SignalMedium size={12} className="text-orange-500 dark:text-orange-400 stroke-[2.5]" />;
       case "LOW":
-        return <SignalLow size={13} className="text-slate-600 dark:text-slate-300 stroke-[2.5]" />;
+        return <SignalLow size={12} className="text-slate-500 dark:text-slate-400 stroke-[2.5]" />;
       default:
-        return <Signal size={13} className="text-neutral-600 dark:text-neutral-400 stroke-[2.5]" />;
+        return <Signal size={12} className="text-neutral-500 dark:text-neutral-400 stroke-[2.5]" />;
     }
   };
 
@@ -410,37 +412,15 @@ function TaskDetailContent() {
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen bg-white dark:bg-[#0A0A0A] transition-colors duration-200 relative z-0">
         {/* Top Header Bar with Breadcrumb Navigation */}
-        <header className="h-12 border-b border-[#E5E5E5] dark:border-[#2A2A2A] px-4 sm:px-6 flex items-center justify-between bg-white dark:bg-[#111111] shrink-0 transition-colors duration-200">
-          <div className="flex items-center gap-3 min-w-0">
-            <Link
-              href="/dashboard"
-              className="p-1 hover:bg-[#F5F5F5] dark:hover:bg-[#262626] rounded text-[#171717] dark:text-[#F5F5F5] transition-colors shrink-0"
-              title="Toggle Sidebar"
-            >
-              <PanelLeft size={16} className="stroke-[2.2]" />
-            </Link>
-
-            {/* Parent Task Breadcrumb Hierarchy */}
-            {parentTask && (
-              <div className="flex items-center gap-1.5 text-xs text-neutral-500 font-semibold truncate">
-                <Link href="/dashboard" className="hover:text-black dark:hover:text-white transition-colors">
-                  Tasks
-                </Link>
-                <ChevronRight size={12} className="stroke-[2.2] shrink-0" />
-                <Link
-                  href={`/task?id=${parentTask.id}`}
-                  className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-bold truncate max-w-[160px]"
-                >
-                  {parentTask.title}
-                </Link>
-                <ChevronRight size={12} className="stroke-[2.2] shrink-0" />
-                <span className="text-neutral-900 dark:text-neutral-100 font-bold truncate max-w-[200px]">
-                  {taskTitle || "Subtask"}
-                </span>
-              </div>
-            )}
-          </div>
-        </header>
+        <Navbar
+          isSidebarOpen={isSidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          breadcrumbs={[
+            { label: "Tasks", href: "/dashboard" },
+            ...(parentTask ? [{ label: parentTask.title, href: `/task?id=${parentTask.id}` }] : []),
+            { label: taskTitle || "Task Details" },
+          ]}
+        />
 
         {/* Task Content Area */}
         <div className="flex-1 overflow-y-auto w-full">
@@ -588,7 +568,14 @@ function TaskDetailContent() {
                         onClick={() => setSubtasksOpen(!subtasksOpen)}
                         className="flex items-center gap-2 text-xs font-bold text-[#171717] dark:text-[#F5F5F5] cursor-pointer select-none py-0.5"
                       >
-                        {subtasksOpen ? <ChevronDown size={14} className="stroke-[2.5] text-neutral-800 dark:text-neutral-200" /> : <ChevronRight size={14} className="stroke-[2.5] text-neutral-800 dark:text-neutral-200" />}
+                        <svg
+                          className={`w-2.5 h-2.5 text-[#171717] dark:text-[#F5F5F5] fill-current transition-transform duration-200 ${
+                            subtasksOpen ? "rotate-0" : "-rotate-90"
+                          }`}
+                          viewBox="0 0 10 10"
+                        >
+                          <path d="M2 3.5L5 7.5L8 3.5H2Z" />
+                        </svg>
                         <span>Subtasks</span>
                       </button>
                     </div>

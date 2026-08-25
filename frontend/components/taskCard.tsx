@@ -91,20 +91,20 @@ export default function TaskCard({
           <div className="flex items-center gap-1.5 ml-auto">
             {/* Priority Badge */}
             {showPriority && (
-              <div className="flex items-center gap-1 text-[10px] font-medium">
+              <div className="flex items-center gap-1 text-xs font-medium">
                 {priority.toLowerCase() === "low" ? (
-                  <span className="flex items-center gap-1 text-[#94A3B8] dark:text-slate-400">
-                    <SignalLow size={10} className="text-[#94A3B8] dark:text-slate-400" />
+                  <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                    <SignalLow size={10} className="text-slate-500 dark:text-slate-400 stroke-[2.5]" />
                     Low
                   </span>
                 ) : priority.toLowerCase() === "medium" ? (
-                  <span className="flex items-center gap-1 text-[#F97316] dark:text-orange-400">
-                    <SignalMedium size={10} className="text-[#F97316] dark:text-orange-400" />
+                  <span className="flex items-center gap-1 text-orange-500 dark:text-orange-400">
+                    <SignalMedium size={10} className="text-orange-500 dark:text-orange-400 stroke-[2.5]" />
                     Medium
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 text-[#EF4444] dark:text-red-400">
-                    <SignalHigh size={10} className="text-[#EF4444] dark:text-red-400" />
+                  <span className="flex items-center gap-1 text-red-500 dark:text-red-400">
+                    <SignalHigh size={10} className="text-red-500 dark:text-red-400 stroke-[2.5]" />
                     High
                   </span>
                 )}

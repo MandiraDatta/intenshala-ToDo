@@ -84,7 +84,7 @@ export default function Sidebar() {
 
             {/* Profile dropdown icon */}
             <div className="w-4 h-4 shrink-0 flex items-center justify-center">
-              <ChevronsUpDown className="w-4 h-4 text-neutral-600 dark:text-[#A3A3A3]" />
+              <ChevronsUpDown className="w-4 h-4 text-[#171717] dark:text-[#F5F5F5] stroke-[2.5]" />
             </div>
           </div>
 
@@ -160,7 +160,7 @@ export default function Sidebar() {
                         }}
                         className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#F5F5F5] dark:hover:bg-[#262626] text-xs text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer text-left"
                       >
-                        <Moon className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5] shrink-0" />
+                        <Moon className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5] shrink-0 stroke-[2.5]" />
                         <span className="flex-1 text-xs font-medium">Dark</span>
                         {theme === "dark" && (
                           <Check className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5] stroke-[2.5] shrink-0" />
@@ -244,7 +244,7 @@ export default function Sidebar() {
           {/* Workspace Selector */}
           <div className="w-full h-7 flex items-center px-2.5">
             {/* Workspace text */}
-            <div className="flex-1 min-w-0 font-sans font-medium text-xs truncate text-neutral-500 dark:text-[#A3A3A3]">
+            <div className="flex-1 min-w-0 font-sans font-medium text-sm truncate text-[#171717] dark:text-[#F5F5F5]">
               Workspace
             </div>
 
@@ -255,7 +255,7 @@ export default function Sidebar() {
               aria-label="Toggle Workspace navigation"
             >
               <ChevronDownIcon
-                className={`w-3.5 h-3.5 text-neutral-500 dark:text-[#A3A3A3] transition-transform duration-300 ${isOpen ? "rotate-0" : "-rotate-180"
+                className={`w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5] stroke-[2.5] transition-transform duration-300 ${isOpen ? "rotate-0" : "-rotate-180"
                   }`}
               />
             </button>
@@ -274,7 +274,7 @@ export default function Sidebar() {
                 }`}
               >
                 <div className="relative w-4 h-4 shrink-0 flex items-center justify-center">
-                  <LayoutDashboard className="w-4 h-4 text-neutral-600 dark:text-[#A3A3A3]" />
+                  <LayoutDashboard className="w-4 h-4 text-[#171717] dark:text-[#F5F5F5] stroke-[2.5]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="font-sans font-medium text-xs truncate text-[#171717] dark:text-[#F5F5F5]">Tasks</span>
@@ -291,7 +291,7 @@ export default function Sidebar() {
                 }`}
               >
                 <div className="relative w-4 h-4 shrink-0 flex items-center justify-center">
-                  <GalleryVerticalEnd className="w-4 h-4 text-neutral-600 dark:text-[#A3A3A3]" />
+                  <GalleryVerticalEnd className="w-4 h-4 text-[#171717] dark:text-[#F5F5F5] stroke-[2.5]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="font-sans font-medium text-xs truncate text-[#171717] dark:text-[#F5F5F5]">Projects</span>
@@ -309,7 +309,7 @@ export default function Sidebar() {
           onClick={() => authService.logout()}
           className="w-full h-9 gap-2.5 px-2.5 py-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors flex items-center cursor-pointer"
         >
-          <LogOut className="w-4 h-4 shrink-0 stroke-[2]" />
+          <LogOut className="w-4 h-4 shrink-0 stroke-[2.5]" />
           <span className="font-sans font-semibold text-xs truncate">Log Out</span>
         </button>
       </div>

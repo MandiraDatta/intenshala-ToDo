@@ -264,72 +264,55 @@ export default function ProfilePage() {
 
       {/* Main Content Area */}
       <main className="flex flex-col flex-1 min-w-0 bg-white dark:bg-[#0A0A0A] transition-colors duration-200 relative z-0">
-        <Navbar isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <Navbar
+          isSidebarOpen={isSidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          breadcrumbs={[
+            { label: "Profile", href: "/profile" },
+            { label: "Settings" },
+          ]}
+        />
 
         {/* Scrollable Main Settings Content */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-8">
-          <div className="w-full max-w-xl mx-auto flex flex-col gap-6">
+          <div className="w-full max-w-[640px] mx-auto flex flex-col gap-6">
             {/* 1. PROFILE TAB */}
             {activeTab === "profile" && (
               <>
-                {/* Profile Header */}
+                {/* Profile Header (Figma: Clean title without avatar image) */}
                 <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsPreviewOpen(true)}
-                    className="w-8 h-8 rounded-full overflow-hidden bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] shrink-0 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity focus:outline-none ring-2 ring-transparent hover:ring-blue-500/30"
-                    title="Click to view full profile picture"
-                  >
-                    <Image
-                      src={user.avatar || "/Pasted image.png"}
-                      alt="Profile Avatar"
-                      width={32}
-                      height={32}
-                      className="w-8 h-8 rounded-full object-cover"
-                    />
-                  </button>
-                  <h1 className="text-base sm:text-lg font-semibold tracking-tight text-[#171717] dark:text-[#F5F5F5]">
+                  <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-[#171717] dark:text-[#F5F5F5]">
                     Profile
                   </h1>
                 </div>
 
-                {/* Profile Information Card */}
-                <div className="bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl overflow-hidden shadow-2xs flex flex-col">
-                  {/* Profile Picture Row */}
-                  <div className="flex flex-col border-b border-[#F0F0F0] dark:border-[#262626]">
-                    <div className="flex items-center justify-between px-4 py-3.5">
-                      <span className="text-xs sm:text-sm font-medium text-[#171717] dark:text-[#F5F5F5]">
+                {/* Profile Information Card (Figma: Fixed 640px, rounded-lg, 1px border) */}
+                <div className="w-full max-w-[640px] bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-lg overflow-hidden shadow-2xs flex flex-col">
+                  {/* Profile Picture Row (Figma: 34px x 34px image, 17px radius, min-h 64px, avatar only on right) */}
+                  <div className="flex flex-col border-b border-[#E5E5E5] dark:border-[#262626]">
+                    <div className="flex items-center justify-between px-4 sm:px-6 min-h-[64px] py-2">
+                      <span className="text-xs sm:text-sm font-normal text-[#171717] dark:text-[#F5F5F5]">
                         Profile picture
                       </span>
-                      <div className="flex items-center gap-2">
+                      <div className="relative">
                         <button
                           type="button"
                           onClick={() => setIsPreviewOpen(true)}
-                          className="w-9 h-9 rounded-full overflow-hidden border border-[#E5E5E5] dark:border-[#333333] focus:outline-none hover:opacity-80 transition-opacity cursor-pointer group relative"
+                          className="w-[34px] h-[34px] rounded-[17px] overflow-hidden border border-[#E5E5E5] dark:border-[#333333] focus:outline-none hover:opacity-80 transition-opacity cursor-pointer group relative shrink-0"
                           title="Click to view full image"
                         >
                           <Image
                             src={user.avatar || "/Pasted image.png"}
                             alt="User Avatar"
-                            width={36}
-                            height={36}
-                            className="w-9 h-9 rounded-full object-cover"
+                            width={34}
+                            height={34}
+                            className="w-[34px] h-[34px] rounded-[17px] object-cover"
                           />
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={isUploadingAvatar}
-                          onClick={() => fileInputRef.current?.click()}
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] hover:bg-[#EAEAEA] dark:hover:bg-[#303030] text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                          title="Upload new image from PC"
-                        >
-                          {isUploadingAvatar ? (
-                            <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
-                          ) : (
-                            <Pencil className="w-3.5 h-3.5 text-[#737373] dark:text-[#A3A3A3]" />
+                          {isUploadingAvatar && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                            </div>
                           )}
-                          <span>{isUploadingAvatar ? "Uploading..." : "Change"}</span>
                         </button>
 
                         <input
@@ -343,7 +326,7 @@ export default function ProfilePage() {
                     </div>
 
                     {avatarError && (
-                      <div className="px-4 pb-3">
+                      <div className="px-4 sm:px-6 pb-3">
                         <div className="p-2 rounded-lg text-xs font-medium bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 flex items-center gap-1.5">
                           <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
                           <span>{avatarError}</span>
@@ -352,9 +335,9 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  {/* Email Row */}
-                  <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#F0F0F0] dark:border-[#262626]">
-                    <span className="text-xs sm:text-sm font-medium text-[#171717] dark:text-[#F5F5F5]">
+                  {/* Email Row (Figma: Hug/Min 64px height, space-between) */}
+                  <div className="flex items-center justify-between px-4 sm:px-6 min-h-[64px] border-b border-[#E5E5E5] dark:border-[#262626]">
+                    <span className="text-xs sm:text-sm font-normal text-[#171717] dark:text-[#F5F5F5]">
                       Email
                     </span>
                     <div className="flex items-center gap-2">
@@ -364,7 +347,7 @@ export default function ProfilePage() {
                             type="email"
                             value={emailInput}
                             onChange={(e) => setEmailInput(e.target.value)}
-                            className="h-7 px-2 bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] rounded text-xs text-[#171717] dark:text-[#F5F5F5] outline-none"
+                            className="h-8 px-3 bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] rounded-lg text-xs text-[#171717] dark:text-[#F5F5F5] outline-none"
                             autoFocus
                           />
                           <button
@@ -408,9 +391,9 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  {/* Full Name Row */}
-                  <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#F0F0F0] dark:border-[#262626]">
-                    <span className="text-xs sm:text-sm font-medium text-[#171717] dark:text-[#F5F5F5]">
+                  {/* Full Name Row (Figma: Hug/Min 64px height, space-between) */}
+                  <div className="flex items-center justify-between px-4 sm:px-6 min-h-[64px] border-b border-[#E5E5E5] dark:border-[#262626]">
+                    <span className="text-xs sm:text-sm font-normal text-[#171717] dark:text-[#F5F5F5]">
                       Full name
                     </span>
                     <input
@@ -418,14 +401,14 @@ export default function ProfilePage() {
                       value={fullNameInput}
                       onChange={(e) => handleFullNameChange(e.target.value)}
                       placeholder="Full name"
-                      className="h-7 sm:h-8 w-28 sm:w-36 px-2.5 bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] rounded-md text-xs font-normal text-[#171717] dark:text-[#F5F5F5] outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors"
+                      className="h-8.5 sm:h-9 w-32 sm:w-44 px-3 bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] rounded-lg text-xs font-normal text-[#171717] dark:text-[#F5F5F5] outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors"
                     />
                   </div>
 
-                  {/* Title Row */}
-                  <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#F0F0F0] dark:border-[#262626]">
+                  {/* Title Row (Figma: Hug/Min 64px height, space-between) */}
+                  <div className="flex items-center justify-between px-4 sm:px-6 min-h-[64px] border-b border-[#E5E5E5] dark:border-[#262626]">
                     <div className="flex flex-col">
-                      <span className="text-xs sm:text-sm font-medium text-[#171717] dark:text-[#F5F5F5]">
+                      <span className="text-xs sm:text-sm font-normal text-[#171717] dark:text-[#F5F5F5]">
                         Title
                       </span>
                       <span className="text-[11px] text-[#737373] dark:text-[#A3A3A3]">
@@ -437,14 +420,14 @@ export default function ProfilePage() {
                       value={titleInput}
                       onChange={(e) => handleTitleChange(e.target.value)}
                       placeholder="Job title"
-                      className="h-7 sm:h-8 w-28 sm:w-36 px-2.5 bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] rounded-md text-xs font-normal text-[#171717] dark:text-[#F5F5F5] outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors"
+                      className="h-8.5 sm:h-9 w-32 sm:w-44 px-3 bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] rounded-lg text-xs font-normal text-[#171717] dark:text-[#F5F5F5] outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors"
                     />
                   </div>
 
-                  {/* Username Row */}
-                  <div className="flex items-center justify-between px-4 py-3.5">
+                  {/* Username Row (Figma: Hug/Min 64px height, space-between) */}
+                  <div className="flex items-center justify-between px-4 sm:px-6 min-h-[64px]">
                     <div className="flex flex-col pr-2">
-                      <span className="text-xs sm:text-sm font-medium text-[#171717] dark:text-[#F5F5F5]">
+                      <span className="text-xs sm:text-sm font-normal text-[#171717] dark:text-[#F5F5F5]">
                         Username
                       </span>
                       <span className="text-[11px] text-[#737373] dark:text-[#A3A3A3]">
@@ -456,7 +439,7 @@ export default function ProfilePage() {
                       value={usernameInput}
                       onChange={(e) => handleUsernameChange(e.target.value)}
                       placeholder="Username"
-                      className="h-7 sm:h-8 w-28 sm:w-36 px-2.5 bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] rounded-md text-xs font-normal text-[#171717] dark:text-[#F5F5F5] outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors shrink-0"
+                      className="h-8.5 sm:h-9 w-32 sm:w-44 px-3 bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] rounded-lg text-xs font-normal text-[#171717] dark:text-[#F5F5F5] outline-none focus:border-neutral-400 dark:focus:border-neutral-500 transition-colors shrink-0"
                     />
                   </div>
                 </div>
@@ -542,10 +525,10 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  {/* Workspace Access Section */}
-                  <div className="flex flex-col gap-2 mt-4">
+                  {/* Workspace Access Section (Figma Spec: 640px width, 141px hug height) */}
+                  <div className="flex flex-col gap-2 mt-2">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-xs sm:text-sm font-semibold text-[#171717] dark:text-[#F5F5F5]">
+                      <h2 className="text-sm font-semibold text-[#171717] dark:text-[#F5F5F5]">
                         Workspace access
                       </h2>
                       <button
@@ -559,7 +542,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex flex-col gap-2">
                       {workspaces.length === 0 ? (
-                        <div className="bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl p-4 text-xs text-[#737373] dark:text-[#A3A3A3]">
+                        <div className="bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-lg p-4 text-xs text-[#737373] dark:text-[#A3A3A3]">
                           No active workspaces found.
                         </div>
                       ) : (
@@ -568,7 +551,7 @@ export default function ProfilePage() {
                           return (
                             <div
                               key={ws.id}
-                              className="bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl p-4 flex items-center justify-between shadow-2xs"
+                              className="bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-lg p-4 flex items-center justify-between shadow-2xs min-h-[64px]"
                             >
                               <div className="flex flex-col gap-0.5">
                                 <div className="flex items-center gap-2">
@@ -581,8 +564,8 @@ export default function ProfilePage() {
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-[11px] text-[#737373] dark:text-[#A3A3A3]">
-                                  Role: {ws.isOwner ? "Owner" : ws.role || "Member"} • {ws.memberCount || 1} member(s)
+                                <span className="text-xs text-[#737373] dark:text-[#A3A3A3]">
+                                  Remove yourself from the workspace
                                 </span>
                               </div>
 
@@ -591,9 +574,9 @@ export default function ProfilePage() {
                                   <button
                                     type="button"
                                     onClick={() => setActiveWorkspace(ws)}
-                                    className="h-7.5 px-3 bg-[#F5F5F5] dark:bg-[#262626] hover:bg-[#EAEAEA] dark:hover:bg-[#333333] text-[#171717] dark:text-[#F5F5F5] border border-[#E5E5E5] dark:border-[#333333] rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
+                                    className="h-8 px-3 bg-[#F5F5F5] dark:bg-[#262626] hover:bg-[#EAEAEA] dark:hover:bg-[#333333] text-[#171717] dark:text-[#F5F5F5] border border-[#E5E5E5] dark:border-[#333333] rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
                                   >
-                                    Switch to Org
+                                    Switch Org
                                   </button>
                                 )}
                                 <button
@@ -604,7 +587,7 @@ export default function ProfilePage() {
                                     }
                                     setIsLeaveModalOpen(true);
                                   }}
-                                  className="h-7.5 px-3 bg-[#FEF2F2] dark:bg-[#450A0A]/40 hover:bg-[#FEE2E2] dark:hover:bg-[#450A0A]/60 text-[#DC2626] dark:text-rose-400 border border-[#FCA5A5]/30 dark:border-rose-900/40 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
+                                  className="h-8 px-3 bg-[#FFF0F0] dark:bg-[#2E1A1A] hover:bg-[#FFE5E5] dark:hover:bg-[#3E2020] text-[#E5484D] dark:text-[#FF6363] border border-[#FFC2C2] dark:border-[#4A2626] rounded-md text-xs font-semibold transition-colors cursor-pointer shrink-0"
                                 >
                                   Leave Workspace
                                 </button>
@@ -835,6 +818,21 @@ export default function ProfilePage() {
                 className="w-full h-full object-cover"
               />
             </div>
+
+            {/* Corner Pencil Edit Button for Uploading Image */}
+            <button
+              type="button"
+              disabled={isUploadingAvatar}
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute bottom-2 right-2 z-10 w-9.5 h-9.5 rounded-full bg-white dark:bg-[#262626] text-[#171717] dark:text-[#F5F5F5] border border-[#E5E5E5] dark:border-[#333333] shadow-xl flex items-center justify-center hover:scale-110 hover:bg-[#F5F5F5] dark:hover:bg-[#333333] transition-all cursor-pointer disabled:opacity-50"
+              title="Change profile picture"
+            >
+              {isUploadingAvatar ? (
+                <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+              ) : (
+                <Pencil className="w-4 h-4 text-[#171717] dark:text-[#F5F5F5]" />
+              )}
+            </button>
           </div>
         </div>
       )}

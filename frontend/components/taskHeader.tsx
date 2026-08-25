@@ -240,7 +240,7 @@ export default function TaskHeader({
             title="Fields"
           >
             <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
-              <Columns3 className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5]" />
+              <Columns3 className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5] stroke-[2.5]" />
             </span>
             <span className="hidden md:flex items-center text-xs font-medium leading-4 text-[#171717] dark:text-[#F5F5F5]">
               Fields
@@ -261,7 +261,7 @@ export default function TaskHeader({
                       : "bg-[#F5F5F5] dark:bg-[#111111] text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5]"
                   }`}
                 >
-                  <List size={14} />
+                  <List size={14} className="stroke-[2.5]" />
                   List
                 </button>
                 <button
@@ -273,7 +273,7 @@ export default function TaskHeader({
                       : "bg-[#F5F5F5] dark:bg-[#111111] text-[#737373] dark:text-[#A3A3A3] hover:text-[#171717] dark:hover:text-[#F5F5F5]"
                   }`}
                 >
-                  <Grid2x2 size={14} />
+                  <Grid2x2 size={14} className="stroke-[2.5]" />
                   Board
                 </button>
               </div>
@@ -324,7 +324,7 @@ export default function TaskHeader({
             }`}
             title="Filter"
           >
-            <Filter className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5]" />
+            <Filter className="w-3.5 h-3.5 text-[#171717] dark:text-[#F5F5F5] stroke-[2.5]" />
           </button>
           <FilterMenu
             filters={dynamicFilterConfigs}
@@ -343,7 +343,7 @@ export default function TaskHeader({
           title={addLabel}
           type="button"
         >
-          <Plus className="w-3.5 h-3.5 shrink-0" />
+          <Plus className="w-3.5 h-3.5 shrink-0 stroke-[2.5]" />
           <span className="hidden md:flex font-sans font-medium text-xs leading-4 tracking-normal align-middle text-[#FAFAFA]">
             {addLabel}
           </span>

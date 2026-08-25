@@ -348,7 +348,11 @@ export default function ProjectsPage() {
       {/* Main Content Area */}
       <main className="flex flex-col flex-1 min-w-0 bg-white dark:bg-[#0A0A0A] transition-colors duration-200 relative z-0">
         {/* Top Navbar */}
-        <Navbar isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <Navbar
+          isSidebarOpen={isSidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          breadcrumbs={[{ label: "Projects", href: "/projects" }]}
+        />
 
         {/* Page Container */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">

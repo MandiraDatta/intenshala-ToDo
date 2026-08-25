@@ -38,36 +38,36 @@ export default function ProjectCard({
     switch (priority) {
       case "Urgent":
         return (
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 dark:text-rose-400">
-            <SignalHigh size={13} className="stroke-[2.5]" />
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-red-500 dark:text-red-400">
+            <SignalHigh size={12} className="stroke-[2.5]" />
             <span>Urgent</span>
           </span>
         );
       case "High":
         return (
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 dark:text-rose-400">
-            <SignalHigh size={13} className="stroke-[2.5]" />
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-red-500 dark:text-red-400">
+            <SignalHigh size={12} className="stroke-[2.5]" />
             <span>High</span>
           </span>
         );
       case "Medium":
         return (
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400">
-            <SignalMedium size={13} className="stroke-[2.5]" />
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-500 dark:text-orange-400">
+            <SignalMedium size={12} className="stroke-[2.5]" />
             <span>Medium</span>
           </span>
         );
       case "Low":
         return (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-400">
-            <SignalLow size={13} className="stroke-[2.5]" />
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <SignalLow size={12} className="stroke-[2.5]" />
             <span>Low</span>
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center gap-1 text-xs font-medium text-neutral-400">
-            <Signal size={13} className="stroke-[2.5]" />
+            <Signal size={12} className="stroke-[2.5]" />
             <span>No Priority</span>
           </span>
         );

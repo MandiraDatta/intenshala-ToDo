@@ -375,7 +375,18 @@ function DashboardContent() {
       {/* Main Content Area */}
       <main className="flex flex-col flex-1 min-w-0 bg-white dark:bg-[#0A0A0A] transition-colors duration-200 relative z-0">
         {/* Top Navbar Component */}
-        <Navbar isSidebarOpen={isSidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <Navbar
+          isSidebarOpen={isSidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          breadcrumbs={
+            currentProject?.name
+              ? [
+                  { label: "Tasks", href: "/dashboard" },
+                  { label: currentProject.name },
+                ]
+              : [{ label: "Tasks", href: "/dashboard" }]
+          }
+        />
 
         {/* Main Page Content */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
