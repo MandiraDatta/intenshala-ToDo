@@ -1,9 +1,14 @@
 import { NestFactory } from '@nestjs/core';
+import { json, urlencoded } from 'express';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Increase payload limit for base64 avatar uploads
+  app.use(json({ limit: '10mb' }));
+  app.use(urlencoded({ limit: '10mb', extended: true }));
 
   // Enable CORS
   app.enableCors({

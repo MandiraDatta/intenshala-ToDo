@@ -26,4 +26,9 @@ export const userService = {
     const { data } = await apiClient.patch('/users/me/preferences', payload);
     return data;
   },
+
+  async updateAvatar(avatarUrl: string) {
+    const { data } = await apiClient.patch('/users/me/avatar', { avatarUrl });
+    return data;
+  },
 };

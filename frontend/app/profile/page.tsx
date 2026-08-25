@@ -37,7 +37,7 @@ export default function ProfilePage() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
 
   const { user, updateUser } = useUser();
-  const { theme, setTheme, colorMode, setColorMode } = useTheme();
+  const { theme, setTheme, colorMode, setColorMode, currentColorHex } = useTheme();
   const { workspaces, activeWorkspace, setActiveWorkspace, createWorkspace, refreshWorkspaces } = useWorkspace();
 
   // Create Workspace Modal States
@@ -107,18 +107,49 @@ export default function ProfilePage() {
   // File Input Ref for Profile Picture
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Handle avatar upload
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Avatar uploading state & image preview modal state
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  // Handle avatar upload from PC
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          updateUser({ avatar: event.target.result as string });
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Check size limit: 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError("Selected image is too large. Please choose an image under 5MB.");
+      setTimeout(() => setAvatarError(null), 4000);
+      return;
     }
+
+    setIsUploadingAvatar(true);
+    setAvatarError(null);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      if (event.target?.result) {
+        try {
+          const dataUrl = event.target.result as string;
+          await updateUser({ avatar: dataUrl });
+        } catch (err: any) {
+          console.error("Failed to upload avatar", err);
+          setAvatarError("Failed to update profile picture. Please try again.");
+          setTimeout(() => setAvatarError(null), 4000);
+        } finally {
+          setIsUploadingAvatar(false);
+        }
+      }
+    };
+
+    reader.onerror = () => {
+      setIsUploadingAvatar(false);
+      setAvatarError("Failed to read image file.");
+      setTimeout(() => setAvatarError(null), 4000);
+    };
+
+    reader.readAsDataURL(file);
   };
 
   // Save email edit
@@ -243,7 +274,12 @@ export default function ProfilePage() {
               <>
                 {/* Profile Header */}
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full overflow-hidden bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] shrink-0 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewOpen(true)}
+                    className="w-8 h-8 rounded-full overflow-hidden bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] shrink-0 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity focus:outline-none ring-2 ring-transparent hover:ring-blue-500/30"
+                    title="Click to view full profile picture"
+                  >
                     <Image
                       src={user.avatar || "/Pasted image.png"}
                       alt="Profile Avatar"
@@ -251,7 +287,7 @@ export default function ProfilePage() {
                       height={32}
                       className="w-8 h-8 rounded-full object-cover"
                     />
-                  </div>
+                  </button>
                   <h1 className="text-base sm:text-lg font-semibold tracking-tight text-[#171717] dark:text-[#F5F5F5]">
                     Profile
                   </h1>
@@ -260,36 +296,60 @@ export default function ProfilePage() {
                 {/* Profile Information Card */}
                 <div className="bg-white dark:bg-[#171717] border border-[#E5E5E5] dark:border-[#2A2A2A] rounded-xl overflow-hidden shadow-2xs flex flex-col">
                   {/* Profile Picture Row */}
-                  <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#F0F0F0] dark:border-[#262626]">
-                    <span className="text-xs sm:text-sm font-medium text-[#171717] dark:text-[#F5F5F5]">
-                      Profile picture
-                    </span>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-9 h-9 rounded-full overflow-hidden border border-[#E5E5E5] dark:border-[#333333] focus:outline-none hover:opacity-80 transition-opacity cursor-pointer group relative"
-                        title="Change profile picture"
-                      >
-                        <Image
-                          src={user.avatar || "/Pasted image.png"}
-                          alt="User Avatar"
-                          width={36}
-                          height={36}
-                          className="w-9 h-9 rounded-full object-cover"
+                  <div className="flex flex-col border-b border-[#F0F0F0] dark:border-[#262626]">
+                    <div className="flex items-center justify-between px-4 py-3.5">
+                      <span className="text-xs sm:text-sm font-medium text-[#171717] dark:text-[#F5F5F5]">
+                        Profile picture
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsPreviewOpen(true)}
+                          className="w-9 h-9 rounded-full overflow-hidden border border-[#E5E5E5] dark:border-[#333333] focus:outline-none hover:opacity-80 transition-opacity cursor-pointer group relative"
+                          title="Click to view full image"
+                        >
+                          <Image
+                            src={user.avatar || "/Pasted image.png"}
+                            alt="User Avatar"
+                            width={36}
+                            height={36}
+                            className="w-9 h-9 rounded-full object-cover"
+                          />
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isUploadingAvatar}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[#F5F5F5] dark:bg-[#262626] border border-[#E5E5E5] dark:border-[#333333] hover:bg-[#EAEAEA] dark:hover:bg-[#303030] text-[#171717] dark:text-[#F5F5F5] transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                          title="Upload new image from PC"
+                        >
+                          {isUploadingAvatar ? (
+                            <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />
+                          ) : (
+                            <Pencil className="w-3.5 h-3.5 text-[#737373] dark:text-[#A3A3A3]" />
+                          )}
+                          <span>{isUploadingAvatar ? "Uploading..." : "Change"}</span>
+                        </button>
+
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/png, image/jpeg, image/webp, image/gif"
+                          onChange={handleAvatarChange}
+                          className="hidden"
                         />
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Pencil className="w-3.5 h-3.5 text-white" />
-                        </div>
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                        className="hidden"
-                      />
+                      </div>
                     </div>
+
+                    {avatarError && (
+                      <div className="px-4 pb-3">
+                        <div className="p-2 rounded-lg text-xs font-medium bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+                          <span>{avatarError}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Email Row */}
@@ -742,6 +802,40 @@ export default function ProfilePage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Circular Popped-Up Profile Picture Preview */}
+      {isPreviewOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
+          onClick={() => setIsPreviewOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative flex flex-col items-center animate-in zoom-in-95 duration-150 cursor-default"
+          >
+            {/* Floating Close Button */}
+            <button
+              type="button"
+              onClick={() => setIsPreviewOpen(false)}
+              className="absolute -top-3 -right-3 z-10 w-8 h-8 rounded-full bg-white dark:bg-[#262626] text-[#171717] dark:text-[#F5F5F5] border border-[#E5E5E5] dark:border-[#333333] shadow-lg flex items-center justify-center hover:scale-105 transition-transform cursor-pointer"
+              title="Close preview"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Circular Popped-Up Image with Round Border */}
+            <div className="w-64 h-64 sm:w-80 sm:h-80 rounded-full overflow-hidden border-4 border-white dark:border-[#2A2A2A] shadow-2xl bg-[#F5F5F5] dark:bg-[#1F1F1F] relative">
+              <Image
+                src={user.avatar || "/Pasted image.png"}
+                alt="Profile Picture"
+                width={320}
+                height={320}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

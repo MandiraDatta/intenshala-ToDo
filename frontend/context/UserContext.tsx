@@ -66,18 +66,30 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const updateUser = async (updatedFields: Partial<UserProfile>) => {
     try {
-      const updated = await userService.updateProfile({
-        fullName: updatedFields.fullName,
-        title: updatedFields.title,
-        username: updatedFields.username,
-      });
+      let newAvatarUrl: string | undefined;
+      
+      // Update avatar if provided
+      if (updatedFields.avatar) {
+        const avatarRes = await userService.updateAvatar(updatedFields.avatar);
+        newAvatarUrl = avatarRes?.avatarUrl || updatedFields.avatar;
+      }
+
+      // Update text fields if provided
+      let updatedProfileRes: any;
+      if (updatedFields.fullName !== undefined || updatedFields.title !== undefined || updatedFields.username !== undefined) {
+        updatedProfileRes = await userService.updateProfile({
+          fullName: updatedFields.fullName,
+          title: updatedFields.title,
+          username: updatedFields.username,
+        });
+      }
 
       setUser((prev) => ({
         ...prev,
-        fullName: updated.fullName || prev.fullName,
-        title: updated.title || prev.title,
-        username: updated.username || prev.username,
-        avatar: updated.avatarUrl || prev.avatar,
+        fullName: updatedProfileRes?.fullName ?? prev.fullName,
+        title: updatedProfileRes?.title ?? prev.title,
+        username: updatedProfileRes?.username ?? prev.username,
+        avatar: newAvatarUrl || updatedProfileRes?.avatarUrl || prev.avatar,
       }));
     } catch (e) {
       console.error("Failed to update user profile on server", e);
