@@ -112,5 +112,19 @@ npm run dev
 
 
 
+---
+
+## 👤 Profile Page - Added Features & Key Modifications
+
+Compared to the baseline Figma specification, the following functional enhancements were implemented on the Profile & Settings page (`app/profile/page.tsx`):
+
+1. **Workspace Member Invitation Integration**:
+   - Integrated an interactive **Invite Members** modal trigger directly within the workspace settings view to send email invitations and token links.
+
+2. **Workspace Departure & Role-Based Actions**:
+   - Functional **Leave Workspace** modal in the workspace Danger Zone allowing non-owner members to safely depart a workspace with confirmation prompts and RBAC role validation.
+
+---
+
 ## 📜 License
 This project is created for internal project & assessment specifications. All rights reserved.
